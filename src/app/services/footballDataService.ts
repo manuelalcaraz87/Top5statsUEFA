@@ -1,16 +1,12 @@
 // football-data.org v4 — primary data source
 // Free tier: top 5 European leagues + UCL, 10 req/min, no daily cap
 //
-// CORS: The API requires the X-Auth-Token custom header, which triggers a CORS
-// preflight (OPTIONS). The Figma Make sandbox domain is not in their allow-list,
-// so we route through corsproxy.io which handles the handshake server-side and
-// forwards all request headers verbatim to the real API.
+// Using backend proxy server to handle CORS and keep tokens secure.
+// The proxy server routes requests to the real API with proper authentication.
 
-const FD_ORIGIN = 'https://api.football-data.org/v4';
-const CORS_PROXY = 'https://corsproxy.io/?';
-const TOKEN = (import.meta.env.VITE_FD_TOKEN as string) || '7ab9d84b33c746788d43904cf0de0f3a';
+const API_BASE = import.meta.env.VITE_API_PROXY_URL || 'http://localhost:3001';
 
-// ── League mapping ─────────────────────────────────────────────────────────────
+// ── League mapping ─────────────────────────────────────────────────────────
 
 export const LEAGUE_CODES: Record<string, string> = {
   'la-liga':    'PD',
@@ -153,7 +149,7 @@ export function normalizeTeamName(raw: string, shortName?: string): string {
   return TEAM_MAP[raw] || (shortName ? TEAM_MAP[shortName] || shortName : raw);
 }
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// ── Types ───────────────────────────────────────────────────────────
 
 export interface NormalizedMatch {
   id: number;
@@ -193,19 +189,35 @@ export interface NormalizedScorer {
   assists: number;
 }
 
-// ── HTTP helper ────────────────────────────────────────────────────────────────
+// ── HTTP helper with error handling ─────────────────────────────────────────
 
-async function get<T>(path: string): Promise<T> {
-  const target = encodeURIComponent(`${FD_ORIGIN}${path}`);
-  const res = await fetch(`${CORS_PROXY}${target}`, {
-    headers: { 'X-Auth-Token': TOKEN },
-  });
-  if (res.status === 429) throw new Error('rate-limited');
-  if (!res.ok) throw new Error(`FD ${res.status} ${path}`);
-  return res.json() as Promise<T>;
+async function get<T>(path: string, params?: Record<string, string>): Promise<T> {
+  try {
+    const url = new URL(`${API_BASE}/api/fd/${path}`);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        url.searchParams.append(key, value);
+      });
+    }
+
+    const res = await fetch(url.toString());
+
+    if (res.status === 429) {
+      throw new Error('Rate limited by Football Data API. Please try again later.');
+    }
+
+    if (!res.ok) {
+      throw new Error(`API error: ${res.status} ${res.statusText}`);
+    }
+
+    return res.json() as Promise<T>;
+  } catch (error) {
+    console.error(`Football Data API Error (${path}):`, error);
+    throw error;
+  }
 }
 
-// ── Date helpers ───────────────────────────────────────────────────────────────
+// ── Date helpers ─────────────────────────────────────────────────────────
 
 function isoDate(offsetDays = 0): string {
   const d = new Date(Date.now() + offsetDays * 86_400_000);
@@ -221,7 +233,7 @@ function parseForm(form: string | null | undefined): ('W' | 'D' | 'L')[] {
   return form.split(',').slice(-5).map(f => f.trim() as 'W' | 'D' | 'L');
 }
 
-// ── Normalizers ────────────────────────────────────────────────────────────────
+// ── Normalizers ─────────────────────────────────────────────────────────
 
 function normalizeMatch(m: Record<string, unknown>): NormalizedMatch {
   const statusRaw = m.status as string;
@@ -257,7 +269,7 @@ function normalizeMatch(m: Record<string, unknown>): NormalizedMatch {
   };
 }
 
-// ── Public API ─────────────────────────────────────────────────────────────────
+// ── Public API ──────────────────────────────────────────────────────────
 
 const ALL_CODES = Object.values(LEAGUE_CODES).join(',');
 
@@ -266,60 +278,81 @@ const ALL_CODES = Object.values(LEAGUE_CODES).join(',');
  * Tries today ± 2 days to ensure we always show something even mid-week.
  */
 export async function fetchMatchWindow(): Promise<NormalizedMatch[]> {
-  const from = isoDate(-1);
-  const to   = isoDate(2);
-  const data = await get<{ matches: Record<string, unknown>[] }>(
-    `/matches?dateFrom=${from}&dateTo=${to}&competitions=${ALL_CODES}`
-  );
-  return (data.matches ?? []).map(normalizeMatch);
+  try {
+    const from = isoDate(-1);
+    const to = isoDate(2);
+    const data = await get<{ matches: Record<string, unknown>[] }>(
+      'matches',
+      {
+        dateFrom: from,
+        dateTo: to,
+        competitions: ALL_CODES,
+      }
+    );
+    return (data.matches ?? []).map(normalizeMatch);
+  } catch (error) {
+    console.error('Failed to fetch match window:', error);
+    return [];
+  }
 }
 
 /** Fetch standings for one league. */
 export async function fetchStandings(leagueId: string): Promise<NormalizedStanding[]> {
-  const code = LEAGUE_CODES[leagueId];
-  if (!code) return [];
+  try {
+    const code = LEAGUE_CODES[leagueId];
+    if (!code) return [];
 
-  const data = await get<{ standings: { type: string; table: Record<string, unknown>[] }[] }>(
-    `/competitions/${code}/standings`
-  );
+    const data = await get<{ standings: { type: string; table: Record<string, unknown>[] }[] }>(
+      `competitions/${code}/standings`
+    );
 
-  const table = data.standings?.find(s => s.type === 'TOTAL')?.table ?? [];
-  return table.map(r => {
-    const team = r.team as Record<string, string>;
-    return {
-      position: r.position as number,
-      team: normalizeTeamName(team?.name ?? '', team?.shortName),
-      played: r.playedGames as number,
-      won:    r.won as number,
-      drawn:  r.draw as number,
-      lost:   r.lost as number,
-      gf:     r.goalsFor as number,
-      ga:     r.goalsAgainst as number,
-      gd:     r.goalDifference as number,
-      points: r.points as number,
-      form:   parseForm(r.form as string),
-    };
-  });
+    const table = data.standings?.find(s => s.type === 'TOTAL')?.table ?? [];
+    return table.map(r => {
+      const team = r.team as Record<string, string>;
+      return {
+        position: r.position as number,
+        team: normalizeTeamName(team?.name ?? '', team?.shortName),
+        played: r.playedGames as number,
+        won:    r.won as number,
+        drawn:  r.draw as number,
+        lost:   r.lost as number,
+        gf:     r.goalsFor as number,
+        ga:     r.goalsAgainst as number,
+        gd:     r.goalDifference as number,
+        points: r.points as number,
+        form:   parseForm(r.form as string),
+      };
+    });
+  } catch (error) {
+    console.error('Failed to fetch standings for league:', leagueId, error);
+    return [];
+  }
 }
 
 /** Fetch top scorers for one league (also includes assists). */
 export async function fetchTopScorers(leagueId: string, limit = 10): Promise<NormalizedScorer[]> {
-  const code = LEAGUE_CODES[leagueId];
-  if (!code) return [];
+  try {
+    const code = LEAGUE_CODES[leagueId];
+    if (!code) return [];
 
-  const data = await get<{ scorers: Record<string, unknown>[] }>(
-    `/competitions/${code}/scorers?limit=${limit}`
-  );
+    const data = await get<{ scorers: Record<string, unknown>[] }>(
+      `competitions/${code}/scorers`,
+      { limit: limit.toString() }
+    );
 
-  return (data.scorers ?? []).map((s, i) => {
-    const player = s.player as Record<string, string>;
-    const team   = s.team   as Record<string, string>;
-    return {
-      rank:    i + 1,
-      name:    player?.name ?? 'Unknown',
-      team:    normalizeTeamName(team?.name ?? '', team?.shortName),
-      goals:   (s.goals   as number) ?? 0,
-      assists: (s.assists as number) ?? 0,
-    };
-  });
+    return (data.scorers ?? []).map((s, i) => {
+      const player = s.player as Record<string, string>;
+      const team   = s.team   as Record<string, string>;
+      return {
+        rank:    i + 1,
+        name:    player?.name ?? 'Unknown',
+        team:    normalizeTeamName(team?.name ?? '', team?.shortName),
+        goals:   (s.goals   as number) ?? 0,
+        assists: (s.assists as number) ?? 0,
+      };
+    });
+  } catch (error) {
+    console.error('Failed to fetch top scorers for league:', leagueId, error);
+    return [];
+  }
 }
