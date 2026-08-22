@@ -17,11 +17,7 @@ export const AF_LEAGUE_IDS: Record<string, number> = {
   'ucl':        2,
 };
 
-// Current season: e.g. Aug 2026 → season 2026 (2026/27)
-export const CURRENT_SEASON = (() => {
-  const d = new Date();
-  return d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1;
-})();
+export const CURRENT_SEASON = 2026; // 2026/27 season
 
 async function get<T>(path: string): Promise<T> {
   const target = encodeURIComponent(`${AF_ORIGIN}${path}`);

@@ -137,7 +137,7 @@ function LeagueTop5Overview({ data, league }: { data: LeagueData; league: League
           <Trophy className="w-5 h-5 text-yellow-400" />
           {league.name} Season Overview
         </h3>
-        <p className="text-gray-500 text-sm">Top performers and leaders — current season</p>
+        <p className="text-gray-500 text-sm">Top performers and leaders — 2026/27 season</p>
       </div>
 
       {/* ── Leader hero ── */}
@@ -481,7 +481,7 @@ function LeagueTeamsList({ data, league }: { data: LeagueData; league: League })
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-gray-100">{league.name} Standings</h3>
-        <p className="text-sm text-gray-400">Current season</p>
+        <p className="text-sm text-gray-400">2026/27 season</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
