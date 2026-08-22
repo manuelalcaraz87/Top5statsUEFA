@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { Trophy, Goal, Users, Shield, Activity, Hand } from 'lucide-react';
+import { Trophy, Goal, Users, Shield, Activity, Hand, Wifi, WifiOff } from 'lucide-react';
 import { PieChart, Pie, Cell } from 'recharts';
 import { ClubCrest } from './ClubCrest';
 import { LeagueBadge } from './LeagueBadge';
 import { SocialFeed } from './SocialFeed';
 import { MatchCard } from './MatchCard';
 import { LEAGUE_DATA, type LeagueData, type Player, type FormResult } from '../data/leagueData';
+import { useLeagueData } from '../hooks/useLeagueData';
+import { useMatches } from '../hooks/useMatches';
+import type { NormalizedMatch } from '../services/footballDataService';
 
 interface League {
   id: string;
@@ -48,24 +51,36 @@ function FormBadge({ result }: { result: FormResult }) {
 
 // ── Match strip (mirrors one MatchesSection league group) ────────────────────
 
-function LeagueMatchStrip({ data, league }: { data: LeagueData; league: League }) {
-  const cards = data.matches.map(m => ({
-    id: m.id,
-    homeTeam: m.homeTeam,
-    awayTeam: m.awayTeam,
-    homeScore: m.homeScore ?? null,
-    awayScore: m.awayScore ?? null,
-    status: m.status,
-    minute: m.minute,
-    time: m.time,
-    league: league.name,
-    leagueColor: league.color,
-  }));
+function LeagueMatchStrip({
+  data,
+  league,
+  liveMatches,
+}: {
+  data: LeagueData;
+  league: League;
+  liveMatches?: NormalizedMatch[];
+}) {
+  const isLive = liveMatches && liveMatches.length > 0;
+  const hasLiveStatus = isLive && liveMatches!.some(m => m.status === 'live');
+
+  const cards = isLive
+    ? liveMatches!.map(m => ({
+        id: m.id, homeTeam: m.homeTeam, awayTeam: m.awayTeam,
+        homeScore: m.homeScore, awayScore: m.awayScore,
+        status: m.status, minute: m.minute ?? undefined, time: m.time,
+        league: league.name, leagueColor: league.color,
+      }))
+    : data.matches.map(m => ({
+        id: m.id, homeTeam: m.homeTeam, awayTeam: m.awayTeam,
+        homeScore: m.homeScore ?? null, awayScore: m.awayScore ?? null,
+        status: m.status, minute: m.minute, time: m.time,
+        league: league.name, leagueColor: league.color,
+      }));
 
   return (
     <div className="bg-[#0d0d0d] border-b border-gray-900">
       <div className="max-w-[1800px] mx-auto">
-        {/* Stadium header – same style as MatchesSection group header */}
+        {/* Stadium header */}
         <div className="relative h-14 overflow-hidden flex items-center px-4 sm:px-6 lg:px-8">
           <img src={data.stadiumImage} alt="" className="absolute inset-0 w-full h-full object-cover object-top" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 100%)' }} />
@@ -74,7 +89,22 @@ function LeagueMatchStrip({ data, league }: { data: LeagueData; league: League }
             <span className="text-white font-bold text-sm">{league.name}</span>
             <span className="text-gray-400 text-xs">· Matchday {data.currentMatchday}</span>
           </div>
-          <span className="ml-auto relative z-10 text-gray-500 text-xs">{data.matches.length} matches</span>
+          <div className="ml-auto relative z-10 flex items-center gap-2">
+            {isLive ? (
+              <div className="flex items-center gap-1.5">
+                <Wifi className="w-3 h-3 text-green-400" />
+                {hasLiveStatus && (
+                  <span className="flex items-center gap-1 text-[10px] text-red-400 font-semibold">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                    Live
+                  </span>
+                )}
+              </div>
+            ) : (
+              <WifiOff className="w-3 h-3 text-gray-600" />
+            )}
+            <span className="text-gray-500 text-xs">{cards.length} matches</span>
+          </div>
         </div>
 
         {/* Compact match cards */}
@@ -107,7 +137,7 @@ function LeagueTop5Overview({ data, league }: { data: LeagueData; league: League
           <Trophy className="w-5 h-5 text-yellow-400" />
           {league.name} Season Overview
         </h3>
-        <p className="text-gray-500 text-sm">Top performers and leaders — 2024/25 season</p>
+        <p className="text-gray-500 text-sm">Top performers and leaders — current season</p>
       </div>
 
       {/* ── Leader hero ── */}
@@ -451,7 +481,7 @@ function LeagueTeamsList({ data, league }: { data: LeagueData; league: League })
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-gray-100">{league.name} Standings</h3>
-        <p className="text-sm text-gray-400">2024/25 season</p>
+        <p className="text-sm text-gray-400">Current season</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -568,7 +598,7 @@ function LeaguePlayersList({ players, title, subtitle, league }: {
 
 type TabType = 'top5' | 'teams' | 'goals' | 'assists' | 'defender' | 'gk';
 
-function LeagueStatsSection({ data, league }: { data: LeagueData; league: League }) {
+function LeagueStatsSection({ data, league, isLive }: { data: LeagueData; league: League; isLive?: boolean }) {
   const [activeTab, setActiveTab] = useState<TabType>('top5');
 
   const tabs = [
@@ -582,27 +612,42 @@ function LeagueStatsSection({ data, league }: { data: LeagueData; league: League
 
   return (
     <div className="bg-[#111111] rounded-lg shadow-xl border border-gray-800 overflow-hidden">
-      {/* Tabs — same layout as TopStatsSection, active colour = league colour */}
-      <div className="bg-[#0d0d0d] border-b border-gray-800 overflow-x-auto scrollbar-hide"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        <div className="flex min-w-max sm:min-w-0">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 sm:px-6 py-4 whitespace-nowrap transition-colors border-b-2 ${
-                  isActive ? 'bg-[#2a2a2a]' : 'border-transparent text-gray-400 hover:text-white hover:bg-[#252525]'
-                }`}
-                style={isActive ? { borderBottomColor: league.color, color: league.color } : undefined}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="text-sm sm:text-base">{tab.label}</span>
-              </button>
-            );
-          })}
+      {/* Tabs + live badge */}
+      <div className="bg-[#0d0d0d] border-b border-gray-800 flex items-stretch">
+        <div className="flex-1 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <div className="flex min-w-max sm:min-w-0">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 sm:px-6 py-4 whitespace-nowrap transition-colors border-b-2 ${
+                    isActive ? 'bg-[#2a2a2a]' : 'border-transparent text-gray-400 hover:text-white hover:bg-[#252525]'
+                  }`}
+                  style={isActive ? { borderBottomColor: league.color, color: league.color } : undefined}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="text-sm sm:text-base">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {/* Live / offline pill */}
+        <div className="flex items-center pr-4 pl-2 flex-shrink-0">
+          {isLive ? (
+            <div className="flex items-center gap-1.5 bg-green-950/50 border border-green-900/40 rounded-full px-2.5 py-1">
+              <Wifi className="w-3 h-3 text-green-400" />
+              <span className="text-[10px] text-green-400 font-medium">Live Data</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-gray-800/50 border border-gray-700/40 rounded-full px-2.5 py-1">
+              <WifiOff className="w-3 h-3 text-gray-500" />
+              <span className="text-[10px] text-gray-500">Cached</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -621,19 +666,24 @@ function LeagueStatsSection({ data, league }: { data: LeagueData; league: League
 // ── Page entry point ─────────────────────────────────────────────────────────
 
 export function LeaguePage({ league }: { league: League }) {
-  const data = LEAGUE_DATA[league.id];
-  if (!data) return null;
+  const staticData = LEAGUE_DATA[league.id];
+  const { data, isLive } = useLeagueData(league.id);
+  const { matchesByLeague } = useMatches();
+
+  const liveLeagueMatches = matchesByLeague[league.name];
+
+  if (!staticData) return null;
 
   return (
     <div key={league.id}>
       {/* ── Match strip ── */}
-      <LeagueMatchStrip data={data} league={league} />
+      <LeagueMatchStrip data={data} league={league} liveMatches={liveLeagueMatches} />
 
       {/* ── Same 9 + 3 grid as Home ── */}
       <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-9">
-            <LeagueStatsSection data={data} league={league} />
+            <LeagueStatsSection data={data} league={league} isLive={isLive} />
           </div>
           <div className="lg:col-span-3">
             <SocialFeed selectedLeague={league} />
