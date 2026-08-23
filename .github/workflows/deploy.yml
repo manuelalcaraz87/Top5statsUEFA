@@ -28,7 +28,10 @@ jobs:
           pnpm --version
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile || pnpm install
+        run: |
+          corepack prepare pnpm@latest --activate
+          pnpm config set auto-install-peers true
+          pnpm install
 
       - name: Build
         run: pnpm build
