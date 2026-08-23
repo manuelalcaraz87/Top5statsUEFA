@@ -6,9 +6,7 @@
 
 # Dependencies
 node_modules/
-package-lock.json
-pnpm-lock.yaml
-yarn.lock
+# Keep one lockfile committed for reproducible deployments.
 
 # Build outputs
 dist/

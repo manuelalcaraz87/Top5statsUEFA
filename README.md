@@ -5,7 +5,7 @@ This is a code bundle for Sports Statistics Website. The original project is ava
 
 ## Prerequisites
 
-- Node.js (v16 or higher)
+- Node.js (v18 or higher)
 - pnpm or npm
 - API tokens for:
   - Football Data API (get one at https://www.football-data.org/client/register)
@@ -125,6 +125,11 @@ The frontend will run on `http://localhost:5173`
 
 ## Production Deployment
 
+The included GitHub Actions workflow deploys the frontend to GitHub Pages. The
+backend proxy must be deployed separately to a Node-compatible host (such as
+Render, Railway, or Fly.io). Configure a repository variable named
+`VITE_API_PROXY_URL` with that public backend URL before pushing to `main`.
+
 For production, ensure:
 
 1. Set `NODE_ENV=production` in the backend
@@ -132,6 +137,9 @@ For production, ensure:
 3. Set proper `CORS_ORIGIN` to your frontend domain
 4. Use environment secrets management (never commit `.env` files)
 5. Consider implementing rate limiting and monitoring
+
+The backend must listen on the host-provided `PORT` and allow the exact
+frontend origin through `CORS_ORIGIN`.
 
 ## Project Structure
 

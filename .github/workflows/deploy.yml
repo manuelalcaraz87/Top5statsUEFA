@@ -24,16 +24,20 @@ jobs:
       - name: Enable Corepack & prepare pnpm
         run: |
           corepack enable
-          corepack prepare pnpm@latest --activate
+          corepack prepare pnpm@10.15.1 --activate
           pnpm --version
 
       - name: Install dependencies
         run: |
-          corepack prepare pnpm@latest --activate
-          pnpm install
+          pnpm install --frozen-lockfile
 
       - name: Build
+        env:
+          VITE_API_PROXY_URL: ${{ vars.VITE_API_PROXY_URL }}
         run: pnpm build
+
+      - name: Preserve custom domain
+        run: cp CNAME dist/CNAME
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -41,4 +45,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           publish_branch: gh-pages
-          # cname: top5stats.com  # uncomment and set if you want a CNAME written

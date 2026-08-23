@@ -4,7 +4,8 @@
 // Using backend proxy server to handle CORS and keep tokens secure.
 // The proxy server routes requests to the real API with proper authentication.
 
-const API_BASE = import.meta.env.VITE_API_PROXY_URL || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_PROXY_URL ||
+  (import.meta.env.DEV ? 'http://localhost:3001' : '');
 
 // ── League mapping ─────────────────────────────────────────────────────────
 
@@ -193,6 +194,10 @@ export interface NormalizedScorer {
 
 async function get<T>(path: string, params?: Record<string, string>): Promise<T> {
   try {
+    if (!API_BASE) {
+      throw new Error('VITE_API_PROXY_URL is not configured for this deployment.');
+    }
+
     const url = new URL(`${API_BASE}/api/fd/${path}`);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
