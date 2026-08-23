@@ -28,7 +28,7 @@ jobs:
           pnpm --version
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --allow-scripts || pnpm install --allow-scripts
+        run: pnpm install --frozen-lockfile || pnpm install
 
       - name: Build
         run: pnpm build
