@@ -125,6 +125,8 @@ function LeagueMatchStrip({
 function LeagueTop5Overview({ data, league }: { data: LeagueData; league: League }) {
   const leader = data.standings[0];
   const scorer = data.topScorers[0];
+  // Hero card shows the best scorer from the leader's own squad, not the league top scorer
+  const leaderTopScorer = data.topScorers.find(p => p.team === leader?.team) ?? scorer;
   const assister = data.topAssisters[0];
   const defender = data.topDefenders[0];
   const keeper = data.topKeepers[0];
@@ -288,27 +290,27 @@ function LeagueTop5Overview({ data, league }: { data: LeagueData; league: League
                 </div>
               </div>
 
-              {/* Top scorer quick card */}
-              {scorer && (
+              {/* Top scorer quick card — best scorer from the leader's team */}
+              {leaderTopScorer && (
                 <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-2 h-2 rounded-full bg-orange-500" />
                     <p className="text-sm text-gray-400">Top Scorer</p>
                   </div>
                   <div className="flex items-center gap-2 mb-3">
-                    <PlayerAvatar name={scorer.name} teamColor={league.color} size={32} />
+                    <PlayerAvatar name={leaderTopScorer.name} teamColor={league.color} size={32} />
                     <div>
-                      <p className="text-gray-200 text-xs font-semibold leading-tight">{scorer.name}</p>
-                      <p className="text-gray-600 text-[10px]">{scorer.team}</p>
+                      <p className="text-gray-200 text-xs font-semibold leading-tight">{leaderTopScorer.name}</p>
+                      <p className="text-gray-600 text-[10px]">{leaderTopScorer.team}</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="text-center">
-                      <p className="text-2xl font-bold" style={{ color: league.color }}>{scorer.goals}</p>
+                      <p className="text-2xl font-bold" style={{ color: league.color }}>{leaderTopScorer.goals}</p>
                       <p className="text-[10px] text-gray-600">Goals</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-400">{scorer.assists}</p>
+                      <p className="text-2xl font-bold text-gray-400">{leaderTopScorer.assists}</p>
                       <p className="text-[10px] text-gray-600">Assists</p>
                     </div>
                   </div>

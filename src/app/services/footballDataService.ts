@@ -4,8 +4,9 @@
 // Using backend proxy server to handle CORS and keep tokens secure.
 // The proxy server routes requests to the real API with proper authentication.
 
-const API_BASE = import.meta.env.VITE_API_PROXY_URL ||
-  (import.meta.env.DEV ? 'http://localhost:3001' : '');
+const PROXY_BASE  = import.meta.env.VITE_API_PROXY_URL || null;
+const FD_TOKEN    = import.meta.env.VITE_FD_TOKEN || '';
+const FD_DIRECT   = 'https://api.football-data.org/v4';
 
 // ── League mapping ─────────────────────────────────────────────────────────
 
@@ -194,18 +195,25 @@ export interface NormalizedScorer {
 
 async function get<T>(path: string, params?: Record<string, string>): Promise<T> {
   try {
-    if (!API_BASE) {
-      throw new Error('VITE_API_PROXY_URL is not configured for this deployment.');
+    let fetchUrl: string;
+    let fetchHeaders: Record<string, string> = {};
+
+    if (PROXY_BASE) {
+      // Production: backend proxy handles auth and CORS
+      const u = new URL(`${PROXY_BASE}/api/fd/${path}`);
+      if (params) Object.entries(params).forEach(([k, v]) => u.searchParams.append(k, v));
+      fetchUrl = u.toString();
+    } else if (FD_TOKEN) {
+      // Figma Make / dev preview: direct call via CORS relay
+      const u = new URL(`${FD_DIRECT}/${path}`);
+      if (params) Object.entries(params).forEach(([k, v]) => u.searchParams.append(k, v));
+      fetchUrl = `https://corsproxy.io/?${encodeURIComponent(u.toString())}`;
+      fetchHeaders = { 'X-Auth-Token': FD_TOKEN };
+    } else {
+      throw new Error('Set VITE_API_PROXY_URL or VITE_FD_TOKEN to enable live data.');
     }
 
-    const url = new URL(`${API_BASE}/api/fd/${path}`);
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        url.searchParams.append(key, value);
-      });
-    }
-
-    const res = await fetch(url.toString());
+    const res = await fetch(fetchUrl, fetchHeaders['X-Auth-Token'] ? { headers: fetchHeaders } : undefined);
 
     if (res.status === 429) {
       throw new Error('Rate limited by Football Data API. Please try again later.');

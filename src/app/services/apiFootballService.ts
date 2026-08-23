@@ -4,8 +4,9 @@
 // Using backend proxy server to handle CORS and keep tokens secure.
 // The proxy server routes requests to the real API with proper authentication.
 
-const API_BASE = import.meta.env.VITE_API_PROXY_URL ||
-  (import.meta.env.DEV ? 'http://localhost:3001' : '');
+const PROXY_BASE = import.meta.env.VITE_API_PROXY_URL || null;
+const AF_TOKEN   = import.meta.env.VITE_AF_TOKEN || '';
+const AF_DIRECT  = 'https://v3.football.api-sports.io';
 
 export const AF_LEAGUE_IDS: Record<string, number> = {
   'la-liga':    140,
@@ -20,18 +21,23 @@ export const CURRENT_SEASON = 2026; // 2026/27 season
 
 async function get<T>(path: string, params?: Record<string, string>): Promise<T> {
   try {
-    if (!API_BASE) {
-      throw new Error('VITE_API_PROXY_URL is not configured for this deployment.');
+    let fetchUrl: string;
+    let fetchHeaders: Record<string, string> = {};
+
+    if (PROXY_BASE) {
+      const u = new URL(`${PROXY_BASE}/api/af/${path}`);
+      if (params) Object.entries(params).forEach(([k, v]) => u.searchParams.append(k, v));
+      fetchUrl = u.toString();
+    } else if (AF_TOKEN) {
+      const u = new URL(`${AF_DIRECT}/${path}`);
+      if (params) Object.entries(params).forEach(([k, v]) => u.searchParams.append(k, v));
+      fetchUrl = `https://corsproxy.io/?${encodeURIComponent(u.toString())}`;
+      fetchHeaders = { 'x-apisports-key': AF_TOKEN };
+    } else {
+      throw new Error('Set VITE_API_PROXY_URL or VITE_AF_TOKEN to enable live data.');
     }
 
-    const url = new URL(`${API_BASE}/api/af/${path}`);
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        url.searchParams.append(key, value);
-      });
-    }
-
-    const res = await fetch(url.toString());
+    const res = await fetch(fetchUrl, fetchHeaders['x-apisports-key'] ? { headers: fetchHeaders } : undefined);
 
     if (res.status === 429) {
       throw new Error('Rate limited by API Football. Please try again later.');
