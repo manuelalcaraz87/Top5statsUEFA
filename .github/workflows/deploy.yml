@@ -34,9 +34,9 @@ jobs:
         run: pnpm build
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-main@v4
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
-          publish_branch: main
-          # cname: top5stats.com  # uncomment if you want the CNAME written
+          publish_branch: gh-pages
+          # cname: top5stats.com  # uncomment and set if you want a CNAME written
