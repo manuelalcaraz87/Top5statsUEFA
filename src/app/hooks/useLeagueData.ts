@@ -62,6 +62,7 @@ export interface UseLeagueDataResult {
   loadingStandings: boolean;
   loadingScorers: boolean;
   isLive: boolean;
+  topTeamScorer: Player | null;
 }
 
 export function useLeagueData(leagueId: string): UseLeagueDataResult {
@@ -102,7 +103,7 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
       setScorers(cachedSc.data);
       setLoadingSc(false);
     } else {
-      fetchTopScorers(leagueId, 10)
+      fetchTopScorers(leagueId, 100)
         .then(data => {
           if (data.length > 0) {
             scorersCache.set(leagueId, { data, timestamp: Date.now() });
@@ -120,7 +121,7 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
     const liveStandings = standings ? standings.map(toStanding) : null;
 
     // Scorers sorted by goals; assisters derived by re-sorting the same data by assists
-    const liveScorers   = scorers ? scorers.map(toScorer) : null;
+    const liveScorers   = scorers ? scorers.slice(0, 10).map(toScorer) : null;
     const liveAssisters = scorers
       ? [...scorers].sort((a, b) => b.assists - a.assists).map((s, i) => toScorer({ ...s, rank: i + 1 }))
       : null;
@@ -133,10 +134,16 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
     };
   }, [staticData, standings, scorers]);
 
+  const leaderTeam = standings?.[0]?.team ?? data.standings[0]?.team;
+  const topTeamScorer = scorers
+    ? toScorer(scorers.find(s => s.team === leaderTeam) ?? scorers[0])
+    : data.topScorers.find(s => s.team === leaderTeam) ?? data.topScorers[0] ?? null;
+
   return {
     data,
     loadingStandings,
     loadingScorers,
     isLive: standings !== null || scorers !== null,
+    topTeamScorer,
   };
 }

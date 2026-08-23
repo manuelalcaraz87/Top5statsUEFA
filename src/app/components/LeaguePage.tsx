@@ -122,9 +122,10 @@ function LeagueMatchStrip({
 
 // ── Top5 overview tab ────────────────────────────────────────────────────────
 
-function LeagueTop5Overview({ data, league }: { data: LeagueData; league: League }) {
+function LeagueTop5Overview({ data, league, topTeamScorer }: { data: LeagueData; league: League; topTeamScorer?: Player | null }) {
   const leader = data.standings[0];
   const scorer = data.topScorers[0];
+  const leaderScorer = topTeamScorer ?? data.topScorers.find(player => player.team === leader?.team) ?? scorer;
   const assister = data.topAssisters[0];
   const defender = data.topDefenders[0];
   const keeper = data.topKeepers[0];
@@ -289,26 +290,26 @@ function LeagueTop5Overview({ data, league }: { data: LeagueData; league: League
               </div>
 
               {/* Top scorer quick card */}
-              {scorer && (
+              {leaderScorer && (
                 <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-2 h-2 rounded-full bg-orange-500" />
                     <p className="text-sm text-gray-400">Top Scorer</p>
                   </div>
                   <div className="flex items-center gap-2 mb-3">
-                    <PlayerAvatar name={scorer.name} teamColor={league.color} size={32} />
+                    <PlayerAvatar name={leaderScorer.name} teamColor={league.color} size={32} />
                     <div>
-                      <p className="text-gray-200 text-xs font-semibold leading-tight">{scorer.name}</p>
-                      <p className="text-gray-600 text-[10px]">{scorer.team}</p>
+                      <p className="text-gray-200 text-xs font-semibold leading-tight">{leaderScorer.name}</p>
+                      <p className="text-gray-600 text-[10px]">{leaderScorer.team}</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="text-center">
-                      <p className="text-2xl font-bold" style={{ color: league.color }}>{scorer.goals}</p>
+                      <p className="text-2xl font-bold" style={{ color: league.color }}>{leaderScorer.goals}</p>
                       <p className="text-[10px] text-gray-600">Goals</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-400">{scorer.assists}</p>
+                      <p className="text-2xl font-bold text-gray-400">{leaderScorer.assists}</p>
                       <p className="text-[10px] text-gray-600">Assists</p>
                     </div>
                   </div>
@@ -598,7 +599,7 @@ function LeaguePlayersList({ players, title, subtitle, league }: {
 
 type TabType = 'top5' | 'teams' | 'goals' | 'assists' | 'defender' | 'gk';
 
-function LeagueStatsSection({ data, league, isLive }: { data: LeagueData; league: League; isLive?: boolean }) {
+function LeagueStatsSection({ data, league, isLive, topTeamScorer }: { data: LeagueData; league: League; isLive?: boolean; topTeamScorer?: Player | null }) {
   const [activeTab, setActiveTab] = useState<TabType>('top5');
 
   const tabs = [
@@ -652,7 +653,7 @@ function LeagueStatsSection({ data, league, isLive }: { data: LeagueData; league
       </div>
 
       <div className="p-4 sm:p-6">
-        {activeTab === 'top5'     && <LeagueTop5Overview data={data} league={league} />}
+        {activeTab === 'top5'     && <LeagueTop5Overview data={data} league={league} topTeamScorer={topTeamScorer} />}
         {activeTab === 'teams'    && <LeagueTeamsList data={data} league={league} />}
         {activeTab === 'goals'    && <LeaguePlayersList players={data.topScorers}   title="Top Scorers"     subtitle="Goals / Assists"       league={league} />}
         {activeTab === 'assists'  && <LeaguePlayersList players={data.topAssisters} title="Top Assisters"   subtitle="Assists / Goals"       league={league} />}
@@ -667,7 +668,7 @@ function LeagueStatsSection({ data, league, isLive }: { data: LeagueData; league
 
 export function LeaguePage({ league }: { league: League }) {
   const staticData = LEAGUE_DATA[league.id];
-  const { data, isLive } = useLeagueData(league.id);
+  const { data, isLive, topTeamScorer } = useLeagueData(league.id);
   const { matchesByLeague } = useMatches();
 
   const liveLeagueMatches = matchesByLeague[league.name];
@@ -683,7 +684,7 @@ export function LeaguePage({ league }: { league: League }) {
       <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-9">
-            <LeagueStatsSection data={data} league={league} isLive={isLive} />
+            <LeagueStatsSection data={data} league={league} isLive={isLive} topTeamScorer={topTeamScorer} />
           </div>
           <div className="lg:col-span-3">
             <SocialFeed selectedLeague={league} />

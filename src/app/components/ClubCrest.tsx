@@ -1,4 +1,5 @@
 import { useId, useState } from 'react';
+import { useTeamLogo } from '../hooks/useLogo';
 
 // ─── Static CDN map (media.api-sports.io – public image CDN, no auth needed) ──
 
@@ -120,11 +121,13 @@ function ClubCrestSVG({ club, size }: { club: string; size: number }) {
 
 export function ClubCrest({ club, size = 32 }: { club: string; size?: number }) {
   const url = cdnUrl(club);
+  const remoteUrl = useTeamLogo(club);
   const [failed, setFailed] = useState(false);
+  const logoUrl = url || remoteUrl;
 
-  if (url && !failed) {
+  if (logoUrl && !failed) {
     return (
-      <img src={url} alt={club} width={size} height={size}
+      <img src={logoUrl} alt={club} width={size} height={size}
         onError={() => setFailed(true)}
         style={{ objectFit: 'contain', flexShrink: 0, display: 'block' }} />
     );

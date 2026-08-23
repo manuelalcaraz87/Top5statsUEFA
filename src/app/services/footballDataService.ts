@@ -277,6 +277,7 @@ function normalizeMatch(m: Record<string, unknown>): NormalizedMatch {
 // ── Public API ──────────────────────────────────────────────────────────
 
 const ALL_CODES = Object.values(LEAGUE_CODES).join(',');
+const CURRENT_SEASON = '2026';
 
 /**
  * Fetch matches in a rolling window covering the nearest match round.
@@ -292,6 +293,7 @@ export async function fetchMatchWindow(): Promise<NormalizedMatch[]> {
         dateFrom: from,
         dateTo: to,
         competitions: ALL_CODES,
+        season: CURRENT_SEASON,
       }
     );
     return (data.matches ?? []).map(normalizeMatch);
@@ -308,7 +310,8 @@ export async function fetchStandings(leagueId: string): Promise<NormalizedStandi
     if (!code) return [];
 
     const data = await get<{ standings: { type: string; table: Record<string, unknown>[] }[] }>(
-      `competitions/${code}/standings`
+      `competitions/${code}/standings`,
+      { season: CURRENT_SEASON }
     );
 
     const table = data.standings?.find(s => s.type === 'TOTAL')?.table ?? [];
@@ -342,7 +345,7 @@ export async function fetchTopScorers(leagueId: string, limit = 10): Promise<Nor
 
     const data = await get<{ scorers: Record<string, unknown>[] }>(
       `competitions/${code}/scorers`,
-      { limit: limit.toString() }
+      { limit: limit.toString(), season: CURRENT_SEASON }
     );
 
     return (data.scorers ?? []).map((s, i) => {
