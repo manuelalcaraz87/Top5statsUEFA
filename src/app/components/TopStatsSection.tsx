@@ -182,12 +182,12 @@ export function TopStatsSection() {
 
       {/* Content */}
       <div className="p-4 sm:p-6">
-        {activeTab === 'top5' && <LiveHomeOverview teams={liveTeams} scorers={liveScorers} assists={liveAssists} />}
+        {activeTab === 'top5' && <Top5Overview />}
         {activeTab === 'teams' && <TeamsList teams={liveTeams} />}
         {activeTab === 'goals' && <PlayersList players={liveScorers} title="Top Scorers" subtitle="Goals / Assists" />}
         {activeTab === 'assists' && <PlayersList players={liveAssists} title="Top Assists" subtitle="Assists / Goals" />}
-        {activeTab === 'defender' && <UnavailableStats title="Top Defenders" />}
-        {activeTab === 'gk' && <UnavailableStats title="Top Goalkeepers" />}
+        {activeTab === 'defender' && <PlayersList players={topDefenders} title="Top Defenders" subtitle="Rating / Clean Sheets" />}
+        {activeTab === 'gk' && <PlayersList players={topKeepers} title="Top Goalkeepers" subtitle="Clean Sheets / Rating" />}
       </div>
     </div>
   );
