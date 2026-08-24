@@ -145,6 +145,10 @@ export function TopStatsSection() {
     })),
   ).sort((a, b) => b.value - a.value).slice(0, 5);
 
+  const displayTeams = liveTeams.length > 0 ? liveTeams : topTeams;
+  const displayScorers = liveScorers.length > 0 ? liveScorers : topScorers;
+  const displayAssists = liveAssists.length > 0 ? liveAssists : topAssists;
+
   const tabs = [
     { id: 'top5' as TabType, label: 'Top 5', icon: Trophy },
     { id: 'teams' as TabType, label: 'Teams', icon: Users },
@@ -182,10 +186,16 @@ export function TopStatsSection() {
 
       {/* Content */}
       <div className="p-4 sm:p-6">
-        {activeTab === 'top5' && <Top5Overview />}
-        {activeTab === 'teams' && <TeamsList teams={liveTeams} />}
-        {activeTab === 'goals' && <PlayersList players={liveScorers} title="Top Scorers" subtitle="Goals / Assists" />}
-        {activeTab === 'assists' && <PlayersList players={liveAssists} title="Top Assists" subtitle="Assists / Goals" />}
+        {activeTab === 'top5' && (
+          <Top5Overview
+            teams={displayTeams}
+            scorers={displayScorers}
+            assists={displayAssists}
+          />
+        )}
+        {activeTab === 'teams' && <TeamsList teams={displayTeams} />}
+        {activeTab === 'goals' && <PlayersList players={displayScorers} title="Top Scorers" subtitle="Goals / Assists" />}
+        {activeTab === 'assists' && <PlayersList players={displayAssists} title="Top Assists" subtitle="Assists / Goals" />}
         {activeTab === 'defender' && <PlayersList players={topDefenders} title="Top Defenders" subtitle="Rating / Clean Sheets" />}
         {activeTab === 'gk' && <PlayersList players={topKeepers} title="Top Goalkeepers" subtitle="Clean Sheets / Rating" />}
       </div>
@@ -193,7 +203,11 @@ export function TopStatsSection() {
   );
 }
 
-function Top5Overview() {
+function Top5Overview({ teams, scorers, assists }: { teams: Team[]; scorers: Player[]; assists: Player[] }) {
+  const topTeams = teams;
+  const topScorers = scorers;
+  const topAssists = assists;
+
   return (
     <div className="space-y-8">
       <div>
