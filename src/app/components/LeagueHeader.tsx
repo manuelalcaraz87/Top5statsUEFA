@@ -1,3 +1,5 @@
+import { CURRENT_SEASON } from '../services/season';
+
 interface League {
   id: string;
   name: string;
@@ -21,7 +23,7 @@ export function LeagueHeader({ league }: LeagueHeaderProps) {
       <div className="relative z-10">
         <p className="text-white/80 text-sm mb-1">{league.country}</p>
         <h2 className="text-white mb-2">{league.name}</h2>
-        <p className="text-white/90">Season 2024/25 • Matchday 26</p>
+        <p className="text-white/90">Season {CURRENT_SEASON}/{CURRENT_SEASON + 1}</p>
       </div>
       <div
         className="absolute top-0 right-0 w-64 h-64 opacity-10"

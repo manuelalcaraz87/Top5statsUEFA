@@ -7,6 +7,7 @@ import { StatWidget } from './StatWidget';
 import { TrendGraph } from './TrendGraph';
 import { GoalsDistributionChart } from './GoalsDistributionChart';
 import { TrendingUp, Target, Users, Award } from 'lucide-react';
+import { CURRENT_SEASON } from '../services/season';
 
 interface League {
   id: string;
@@ -168,7 +169,7 @@ export function LeagueDashboard({ league }: LeagueDashboardProps) {
           icon={<TrendingUp className="w-5 h-5" />}
           title="Total Matches"
           value={data.totalMatches.toString()}
-          subtitle="Season 2024/25"
+          subtitle={`Season ${CURRENT_SEASON}/${CURRENT_SEASON + 1}`}
           color={league.color}
         />
       </div>

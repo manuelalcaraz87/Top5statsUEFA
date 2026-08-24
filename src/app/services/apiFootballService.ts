@@ -3,6 +3,7 @@
 //
 // Using backend proxy server to handle CORS and keep tokens secure.
 // The proxy server routes requests to the real API with proper authentication.
+import { CURRENT_SEASON } from './season';
 
 const API_BASE = import.meta.env.VITE_API_PROXY_URL ||
   (import.meta.env.DEV ? 'http://localhost:3001' : '');
@@ -15,8 +16,6 @@ export const AF_LEAGUE_IDS: Record<string, number> = {
   'ligue-1':    61,
   'ucl':        2,
 };
-
-export const CURRENT_SEASON = 2026; // 2026/27 season
 
 async function get<T>(path: string, params?: Record<string, string>): Promise<T> {
   try {
