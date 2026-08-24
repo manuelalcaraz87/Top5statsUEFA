@@ -99,11 +99,11 @@ export function TopStatsSection() {
   const ligue1 = useLeagueData('ligue-1');
 
   const liveLeagues = [
-    { id: 'la-liga', name: 'La Liga', color: '#ee8707', data: laLiga.data },
-    { id: 'epl', name: 'EPL', color: '#3d195b', data: epl.data },
-    { id: 'serie-a', name: 'Serie A', color: '#024494', data: serieA.data },
-    { id: 'bundesliga', name: 'Bundesliga', color: '#d20515', data: bundesliga.data },
-    { id: 'ligue-1', name: 'Ligue 1', color: '#dae025', data: ligue1.data },
+    { id: 'la-liga', name: 'La Liga', color: '#ee8707', data: laLiga.data, loading: laLiga.loadingStandings || laLiga.loadingScorers },
+    { id: 'epl', name: 'EPL', color: '#3d195b', data: epl.data, loading: epl.loadingStandings || epl.loadingScorers },
+    { id: 'serie-a', name: 'Serie A', color: '#024494', data: serieA.data, loading: serieA.loadingStandings || serieA.loadingScorers },
+    { id: 'bundesliga', name: 'Bundesliga', color: '#d20515', data: bundesliga.data, loading: bundesliga.loadingStandings || bundesliga.loadingScorers },
+    { id: 'ligue-1', name: 'Ligue 1', color: '#dae025', data: ligue1.data, loading: ligue1.loadingStandings || ligue1.loadingScorers },
   ];
 
   const liveTeams: Team[] = liveLeagues.flatMap(league =>
@@ -145,9 +145,10 @@ export function TopStatsSection() {
     })),
   ).sort((a, b) => b.value - a.value).slice(0, 5);
 
-  const displayTeams = liveTeams.length > 0 ? liveTeams : topTeams;
-  const displayScorers = liveScorers.length > 0 ? liveScorers : topScorers;
-  const displayAssists = liveAssists.length > 0 ? liveAssists : topAssists;
+  const liveDataLoading = liveLeagues.some(league => league.loading);
+  const displayTeams = liveTeams.length > 0 ? liveTeams : liveDataLoading ? topTeams : [];
+  const displayScorers = liveScorers.length > 0 ? liveScorers : liveDataLoading ? topScorers : [];
+  const displayAssists = liveAssists.length > 0 ? liveAssists : liveDataLoading ? topAssists : [];
 
   const tabs = [
     { id: 'top5' as TabType, label: 'Top 5', icon: Trophy },
@@ -204,9 +205,9 @@ export function TopStatsSection() {
 }
 
 function Top5Overview({ teams, scorers, assists }: { teams: Team[]; scorers: Player[]; assists: Player[] }) {
-  const topTeams = teams;
-  const topScorers = scorers;
-  const topAssists = assists;
+  const topTeams = teams.length > 0 ? teams : [{ id: 0, name: 'No current data', league: '', leagueColor: '#666', points: 0, wins: 0, draws: 0, losses: 0, gd: 0 }];
+  const topScorers = scorers.length > 0 ? scorers : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
+  const topAssists = assists.length > 0 ? assists : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
 
   return (
     <div className="space-y-8">

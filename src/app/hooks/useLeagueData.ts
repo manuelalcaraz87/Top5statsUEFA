@@ -88,10 +88,8 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
     } else {
       fetchStandings(leagueId)
         .then(data => {
-          if (data.length > 0) {
-            standingsCache.set(leagueId, { data, timestamp: Date.now() });
-            setStandings(data);
-          }
+          standingsCache.set(leagueId, { data, timestamp: Date.now() });
+          setStandings(data);
         })
         .catch(e => console.warn('[useLeagueData] standings failed:', e))
         .finally(() => setLoadingSt(false));
@@ -105,10 +103,8 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
     } else {
       fetchTopScorers(leagueId, 100)
         .then(data => {
-          if (data.length > 0) {
-            scorersCache.set(leagueId, { data, timestamp: Date.now() });
-            setScorers(data);
-          }
+          scorersCache.set(leagueId, { data, timestamp: Date.now() });
+          setScorers(data);
         })
         .catch(e => console.warn('[useLeagueData] scorers failed:', e))
         .finally(() => setLoadingSc(false));
@@ -121,7 +117,7 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
     const liveStandings = standings ? standings.map(toStanding) : null;
 
     // Scorers sorted by goals; assisters derived by re-sorting the same data by assists
-    const liveScorers   = scorers ? scorers.slice(0, 10).map(toScorer) : null;
+    const liveScorers   = scorers !== null ? scorers.slice(0, 10).map(toScorer) : null;
     const liveAssisters = scorers
       ? [...scorers].sort((a, b) => b.assists - a.assists).map((s, i) => toScorer({ ...s, rank: i + 1 }))
       : null;
@@ -135,8 +131,8 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
   }, [staticData, standings, scorers]);
 
   const leaderTeam = standings?.[0]?.team ?? data.standings[0]?.team;
-  const topTeamScorer = scorers
-    ? toScorer(scorers.find(s => s.team === leaderTeam) ?? scorers[0])
+  const topTeamScorer = scorers !== null
+    ? (scorers.find(s => s.team === leaderTeam) ? toScorer(scorers.find(s => s.team === leaderTeam)!) : null)
     : data.topScorers.find(s => s.team === leaderTeam) ?? data.topScorers[0] ?? null;
 
   return {
