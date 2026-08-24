@@ -118,8 +118,11 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
 
     // Scorers sorted by goals; assisters derived by re-sorting the same data by assists
     const liveScorers   = scorers !== null ? scorers.slice(0, 10).map(toScorer) : null;
-    const liveAssisters = scorers
-      ? [...scorers].sort((a, b) => b.assists - a.assists).map((s, i) => toScorer({ ...s, rank: i + 1 }))
+    const liveAssisters = scorers !== null
+      ? [...scorers]
+        .filter(s => s.assists > 0)
+        .sort((a, b) => b.assists - a.assists)
+        .map((s, i) => toScorer({ ...s, rank: i + 1 }))
       : null;
 
     return {

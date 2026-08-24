@@ -514,7 +514,7 @@ function Top5Overview({ teams, scorers, assists }: { teams: Team[]; scorers: Pla
           <div className="bg-gradient-to-br from-green-950/40 to-[#1a1a1a] p-4 rounded-lg border border-green-900/30">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topScorers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Shots on Target</p>
+              <p className="text-xs text-gray-400">Assists</p>
             </div>
             <p className="text-3xl font-light text-white">{topScorers[0].stat2}</p>
             <div className="mt-3 w-full bg-green-900/40 rounded-full h-2">
