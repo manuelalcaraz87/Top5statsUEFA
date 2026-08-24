@@ -3,6 +3,7 @@ import { Trophy, Goal, Users, Shield, Activity, Hand } from 'lucide-react';
 import { PieChart, Pie, Cell } from 'recharts';
 import { ClubCrest } from './ClubCrest';
 import { LeagueBadge } from './LeagueBadge';
+import { useLeagueData } from '../hooks/useLeagueData';
 
 const BERNABEU = 'https://images.unsplash.com/photo-1522778034537-20a2486be803?w=800&q=75&fit=crop&auto=format';
 
@@ -91,6 +92,58 @@ type TabType = 'top5' | 'teams' | 'goals' | 'assists' | 'defender' | 'gk';
 
 export function TopStatsSection() {
   const [activeTab, setActiveTab] = useState<TabType>('top5');
+  const laLiga = useLeagueData('la-liga');
+  const epl = useLeagueData('epl');
+  const serieA = useLeagueData('serie-a');
+  const bundesliga = useLeagueData('bundesliga');
+  const ligue1 = useLeagueData('ligue-1');
+
+  const liveLeagues = [
+    { id: 'la-liga', name: 'La Liga', color: '#ee8707', data: laLiga.data },
+    { id: 'epl', name: 'EPL', color: '#3d195b', data: epl.data },
+    { id: 'serie-a', name: 'Serie A', color: '#024494', data: serieA.data },
+    { id: 'bundesliga', name: 'Bundesliga', color: '#d20515', data: bundesliga.data },
+    { id: 'ligue-1', name: 'Ligue 1', color: '#dae025', data: ligue1.data },
+  ];
+
+  const liveTeams: Team[] = liveLeagues.flatMap(league =>
+    league.data.standings.slice(0, 5).map((standing, index) => ({
+      id: `${league.id}-${standing.position}` as unknown as number,
+      name: standing.team,
+      league: league.name,
+      leagueColor: league.color,
+      points: standing.points,
+      wins: standing.won,
+      draws: standing.drawn,
+      losses: standing.lost,
+      gd: standing.gd,
+      position: index + 1,
+    })),
+  ).sort((a, b) => b.points - a.points).slice(0, 5);
+
+  const liveScorers: Player[] = liveLeagues.flatMap(league =>
+    league.data.topScorers.map(player => ({
+      id: player.rank,
+      name: player.name,
+      team: player.team,
+      league: league.name,
+      leagueColor: league.color,
+      value: player.goals,
+      stat2: player.assists,
+    })),
+  ).sort((a, b) => b.value - a.value).slice(0, 5);
+
+  const liveAssists: Player[] = liveLeagues.flatMap(league =>
+    league.data.topAssisters.map(player => ({
+      id: player.rank,
+      name: player.name,
+      team: player.team,
+      league: league.name,
+      leagueColor: league.color,
+      value: player.assists,
+      stat2: player.goals,
+    })),
+  ).sort((a, b) => b.value - a.value).slice(0, 5);
 
   const tabs = [
     { id: 'top5' as TabType, label: 'Top 5', icon: Trophy },
@@ -129,12 +182,12 @@ export function TopStatsSection() {
 
       {/* Content */}
       <div className="p-4 sm:p-6">
-        {activeTab === 'top5' && <Top5Overview />}
-        {activeTab === 'teams' && <TeamsList teams={topTeams} />}
-        {activeTab === 'goals' && <PlayersList players={topScorers} title="Top Scorers" subtitle="Goals / Shots" />}
-        {activeTab === 'assists' && <PlayersList players={topAssists} title="Top Assists" subtitle="Assists / Chances" />}
-        {activeTab === 'defender' && <PlayersList players={topDefenders} title="Top Defenders" subtitle="Rating / Clean Sheets" />}
-        {activeTab === 'gk' && <PlayersList players={topKeepers} title="Top Goalkeepers" subtitle="Clean Sheets / Rating" />}
+        {activeTab === 'top5' && <LiveHomeOverview teams={liveTeams} scorers={liveScorers} assists={liveAssists} />}
+        {activeTab === 'teams' && <TeamsList teams={liveTeams} />}
+        {activeTab === 'goals' && <PlayersList players={liveScorers} title="Top Scorers" subtitle="Goals / Assists" />}
+        {activeTab === 'assists' && <PlayersList players={liveAssists} title="Top Assists" subtitle="Assists / Goals" />}
+        {activeTab === 'defender' && <UnavailableStats title="Top Defenders" />}
+        {activeTab === 'gk' && <UnavailableStats title="Top Goalkeepers" />}
       </div>
     </div>
   );
@@ -806,4 +859,57 @@ function PlayersList({ players, title, subtitle }: { players: Player[]; title: s
       </div>
     </div>
   );
+}
+
+function LiveHomeOverview({ teams, scorers, assists }: { teams: Team[]; scorers: Player[]; assists: Player[] }) {
+  const leader = teams[0];
+  const scorer = scorers[0];
+  const assister = assists[0];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-gray-100 mb-2 flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-yellow-400" />
+          Current Leaders Across Top 5 Leagues
+        </h3>
+        <p className="text-gray-500 text-sm">Live 2026/27 standings, scorers, and assists</p>
+      </div>
+      {leader && (
+        <div className="bg-[#1a1a1a] rounded-lg border border-gray-800 p-5 flex items-center gap-4">
+          <ClubCrest club={leader.name} size={52} />
+          <div>
+            <p className="text-white text-xl font-bold">{leader.name}</p>
+            <p className="text-gray-500 text-sm">{leader.league} leader</p>
+          </div>
+          <div className="ml-auto text-right">
+            <p className="text-2xl font-bold text-white">{leader.points}</p>
+            <p className="text-xs text-gray-500">points</p>
+          </div>
+        </div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {scorer && <LiveLeaderCard title="Top Scorer" player={scorer} primaryLabel="Goals" primaryValue={scorer.value} secondaryLabel="Assists" secondaryValue={scorer.stat2 ?? 0} />}
+        {assister && <LiveLeaderCard title="Top Assister" player={assister} primaryLabel="Assists" primaryValue={assister.value} secondaryLabel="Goals" secondaryValue={assister.stat2 ?? 0} />}
+      </div>
+      <UnavailableStats title="Defenders and goalkeepers" />
+    </div>
+  );
+}
+
+function LiveLeaderCard({ title, player, primaryLabel, primaryValue, secondaryLabel, secondaryValue }: { title: string; player: Player; primaryLabel: string; primaryValue: number; secondaryLabel: string; secondaryValue: number }) {
+  return (
+    <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
+      <p className="text-sm text-gray-400 mb-3">{title} · {player.league}</p>
+      <div className="flex items-center gap-3 mb-4">
+        <PlayerAvatar name={player.name} teamColor={player.leagueColor} size={38} />
+        <div><p className="text-white font-medium">{player.name}</p><p className="text-xs text-gray-500">{player.team}</p></div>
+      </div>
+      <div className="flex gap-8"><div><p className="text-2xl text-white">{primaryValue}</p><p className="text-xs text-gray-500">{primaryLabel}</p></div><div><p className="text-2xl text-gray-400">{secondaryValue}</p><p className="text-xs text-gray-500">{secondaryLabel}</p></div></div>
+    </div>
+  );
+}
+
+function UnavailableStats({ title }: { title: string }) {
+  return <div className="bg-[#1a1a1a] rounded-lg border border-gray-800 p-5"><p className="text-gray-300 font-medium">{title}</p><p className="text-sm text-gray-500 mt-2">Current 2026/27 data is unavailable from the configured API plan.</p></div>;
 }
