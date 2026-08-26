@@ -1,6 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import {
+  startSocialIngestion,
+  getLeagueFeed,
+  getTrending,
+  getStatus,
+} from './social/ingestion.js';
+import { getAllLeagueIds } from './social/sources.js';
 
 dotenv.config();
 
@@ -115,6 +122,27 @@ app.get('/api/af/*', async (req, res) => {
   }
 });
 
+// Social feed: posts scraped from X.com for a league's players, clubs,
+// league accounts and top commentators, ranked by the trending algorithm.
+app.get('/api/social/feed/:leagueId', (req, res) => {
+  const { leagueId } = req.params;
+  if (!getAllLeagueIds().includes(leagueId)) {
+    return res.status(404).json({ error: `Unknown league: ${leagueId}` });
+  }
+  const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+  res.json({ posts: getLeagueFeed(leagueId, { limit }) });
+});
+
+// Trending hashtags/topics aggregated across all leagues.
+app.get('/api/social/trending', (req, res) => {
+  res.json({ trending: getTrending() });
+});
+
+// Ingestion status/diagnostics.
+app.get('/api/social/status', (req, res) => {
+  res.json(getStatus());
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -124,3 +152,6 @@ app.listen(PORT, () => {
   console.log(`🚀 Backend proxy server running on http://localhost:${PORT}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
+// Kick off periodic X.com ingestion for the social feed / trending algorithm.
+startSocialIngestion({ intervalMinutes: Number(process.env.SOCIAL_REFRESH_MINUTES) || 5 });

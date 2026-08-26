@@ -10,6 +10,7 @@ This is a code bundle for Sports Statistics Website. The original project is ava
 - API tokens for:
   - Football Data API (get one at https://www.football-data.org/client/register)
   - API Football (get one at https://rapidapi.com/api-sports/api/api-football)
+  - X.com (Twitter) API v2 (get one at https://developer.twitter.com/en/portal/dashboard) — optional, powers the Social Feed / Trending section
 
 ## Setup
 
@@ -62,6 +63,8 @@ FD_TOKEN=your_football_data_token
 AF_TOKEN=your_api_football_token
 CORS_ORIGIN=http://localhost:5173
 CACHE_TTL_MINUTES=60
+X_BEARER_TOKEN=your_x_api_bearer_token
+SOCIAL_REFRESH_MINUTES=5
 ```
 
 Install dependencies:
@@ -122,6 +125,47 @@ The frontend will run on `http://localhost:5173`
 - `AF_TOKEN`: API Football token
 - `CORS_ORIGIN`: Frontend URL for CORS
 - `CACHE_TTL_MINUTES`: Cache expiration time in minutes (default: 60)
+- `X_BEARER_TOKEN`: X.com (Twitter) API v2 bearer token used to fetch posts for the Social Feed / Trending section. If omitted, the ingestion service stays disabled and the frontend falls back to static preview content.
+- `SOCIAL_REFRESH_MINUTES`: How often (in minutes) the server polls X.com for new posts (default: 5)
+
+## Social Feed & Trending Algorithm
+
+The Social Feed and Trending sections surface real posts from X.com (Twitter)
+related to each league, sourced from three curated tiers of accounts per
+league (see `server/social/sources.js`):
+
+- **League/club accounts** — official league and top club handles
+- **Players** — star player accounts
+- **Commentators** — trusted journalists/insiders (e.g. transfer reporters)
+
+### How it works
+
+1. `server/social/xClient.js` queries the X API v2 recent-search endpoint,
+   scoped to `from:<handle>` clauses for each league's curated accounts.
+2. `server/social/trending.js` scores every post with a time-decayed,
+   tier-weighted engagement formula:
+
+   ```
+   score = weightedEngagement(likes, retweets, replies, quotes) * tierWeight
+           / (ageInHours + 2) ^ GRAVITY
+   ```
+
+   Commentator/insider posts get a higher tier weight since breaking
+   news/transfer posts tend to drive outsized engagement. Retweets/quotes are
+   weighted highest among engagement signals since they best capture spread.
+3. Hashtags across all leagues' ranked posts are aggregated into a single
+   Trending list, ranked by total decayed score and marked "hot" once a tag
+   appears in 3+ recent posts.
+4. `server/social/ingestion.js` runs this pipeline on a timer
+   (`SOCIAL_REFRESH_MINUTES`) and caches the ranked results in memory, served
+   via:
+   - `GET /api/social/feed/:leagueId?limit=20`
+   - `GET /api/social/trending`
+   - `GET /api/social/status` (diagnostics: last refresh time, per-league post counts)
+5. The frontend's `useSocialFeed` hook (`src/app/hooks/useSocialFeed.ts`)
+   fetches and caches this data, and the `SocialFeed` component renders it —
+   falling back to static preview content if the backend has no live data
+   yet (e.g. `X_BEARER_TOKEN` not configured).
 
 ## Production Deployment
 
@@ -155,6 +199,11 @@ frontend origin through `CORS_ORIGIN`.
 │   └── main.tsx              # Entry point
 ├── server/                    # Backend proxy server
 │   ├── index.js              # Express server
+│   ├── social/                # X.com ingestion & trending algorithm
+│   │   ├── sources.js         # Curated per-league league/player/commentator handles
+│   │   ├── xClient.js         # X.com (Twitter) API v2 client
+│   │   ├── trending.js        # Scoring/ranking algorithm
+│   │   └── ingestion.js       # Scheduled polling + in-memory cache
 │   ├── package.json
 │   └── .env.example
 ├── .env.example              # Frontend env template
