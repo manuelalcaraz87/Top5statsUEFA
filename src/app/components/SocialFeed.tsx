@@ -1,5 +1,6 @@
 import { TrendingUp, Heart, MessageCircle, Share2, Repeat2, Flame, ExternalLink } from 'lucide-react';
 import { LeagueBadge } from './LeagueBadge';
+import { useSocialFeed } from '../hooks/useSocialFeed';
 
 interface League {
   id: string;
@@ -12,7 +13,9 @@ interface SocialFeedProps {
   selectedLeague: League;
 }
 
-const POSTS = [
+// Fallback content shown while the live X.com feed loads, or if the social
+// ingestion backend is unavailable / not yet configured with an API token.
+const FALLBACK_POSTS = [
   {
     id: 1,
     source: 'X',
@@ -105,7 +108,7 @@ const POSTS = [
   },
 ];
 
-const TRENDING = [
+const FALLBACK_TRENDING = [
   { tag: '#ElClasico',        posts: '124K', hot: true },
   { tag: '#UCLDraw',          posts: '89K',  hot: true },
   { tag: '#TransferWindow',   posts: '56K',  hot: false },
@@ -115,6 +118,11 @@ const TRENDING = [
 ];
 
 export function SocialFeed({ selectedLeague }: SocialFeedProps) {
+  const { posts: livePosts, trending: liveTrending, isLive } = useSocialFeed(selectedLeague.id);
+
+  const POSTS = isLive && livePosts ? livePosts : FALLBACK_POSTS;
+  const TRENDING = liveTrending && liveTrending.length > 0 ? liveTrending : FALLBACK_TRENDING;
+
   return (
     <div className="space-y-4">
       {/* Feed header */}
@@ -125,7 +133,9 @@ export function SocialFeed({ selectedLeague }: SocialFeedProps) {
         >
           <TrendingUp className="w-4 h-4" style={{ color: selectedLeague.color }} />
           <span className="text-white font-semibold text-sm">Social Feed</span>
-          <span className="ml-auto text-[10px] text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full">Live</span>
+          <span className="ml-auto text-[10px] text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full">
+            {isLive ? 'Live' : 'Preview'}
+          </span>
         </div>
 
         <div className="divide-y divide-gray-800/60">
@@ -150,14 +160,16 @@ export function SocialFeed({ selectedLeague }: SocialFeedProps) {
               {/* Image thumbnail */}
               {post.image && (
                 <div className="relative mb-2.5 rounded-lg overflow-hidden h-28">
-                  <img src={post.image} alt={post.title} className="w-full h-full object-cover" loading="lazy" />
+                  <img src={post.image} alt={post.title ?? post.tag} className="w-full h-full object-cover" loading="lazy" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <p className="absolute bottom-2 left-2.5 text-white text-xs font-semibold">{post.title}</p>
+                  {post.title && (
+                    <p className="absolute bottom-2 left-2.5 text-white text-xs font-semibold">{post.title}</p>
+                  )}
                 </div>
               )}
 
               {/* Post content */}
-              {!post.image && (
+              {!post.image && post.title && (
                 <p className="text-white text-xs font-semibold mb-1">{post.title}</p>
               )}
               <p className="text-gray-400 text-[11px] leading-relaxed mb-3 line-clamp-2">
@@ -182,12 +194,24 @@ export function SocialFeed({ selectedLeague }: SocialFeedProps) {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] text-gray-600">{post.time} ago</span>
-                  <button className="text-gray-700 hover:text-gray-400 transition-colors opacity-0 group-hover:opacity-100">
-                    <ExternalLink className="w-3 h-3" />
-                  </button>
+                  {post.url ? (
+                    <a
+                      href={post.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-700 hover:text-gray-400 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  ) : (
+                    <button className="text-gray-700 hover:text-gray-400 transition-colors opacity-0 group-hover:opacity-100">
+                      <ExternalLink className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               </div>
             </article>
+
           ))}
         </div>
 
