@@ -1,6 +1,6 @@
 import { useId, useState, useEffect } from 'react';
 import { useTeamLogo } from '../hooks/useLogo';
-import { getSportmonksLogo } from '../services/logoService';
+import { getSportmonksLogo, subscribeToLogoUpdates } from '../services/logoService';
 
 // ─── Static CDN map (media.api-sports.io – public image CDN, no auth needed) ──
 
@@ -121,18 +121,27 @@ function ClubCrestSVG({ club, size }: { club: string; size: number }) {
 // ─── Public component – real logo first, SVG fallback ─────────────────────────
 
 export function ClubCrest({ club, size = 32 }: { club: string; size?: number }) {
-  // Sportmonks logos are registered synchronously after fetch — check first
-  const smLogo = getSportmonksLogo(club);
   const cdnLogo = cdnUrl(club);
   const remoteUrl = useTeamLogo(club);
-  const [failed, setFailed] = useState(false);
 
-  // Re-render when Sportmonks logo becomes available (registry update)
-  const [smLogoUrl, setSmLogoUrl] = useState<string | null>(smLogo);
+  // Track failed state — MUST reset when club changes to avoid showing
+  // a previous club's fallback SVG for the new club.
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [club]);
+
+  // Sportmonks logos are registered async after components mount.
+  // Subscribe to registry updates so we re-render when they arrive.
+  const [smLogoUrl, setSmLogoUrl] = useState<string | null>(() => getSportmonksLogo(club));
   useEffect(() => {
-    // Poll for registry updates (runs once on mount and when club changes)
-    const url = getSportmonksLogo(club);
-    if (url) setSmLogoUrl(url);
+    // Immediately re-check for the current club (handles club prop changes)
+    setSmLogoUrl(getSportmonksLogo(club));
+    setFailed(false);
+    // Subscribe so any future registry update for ANY club re-checks this instance
+    const unsub = subscribeToLogoUpdates(() => {
+      const url = getSportmonksLogo(club);
+      if (url) setSmLogoUrl(url);
+    });
+    return unsub;
   }, [club]);
 
   const logoUrl = smLogoUrl || cdnLogo || remoteUrl;

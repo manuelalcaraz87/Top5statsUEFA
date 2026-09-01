@@ -33,12 +33,86 @@ function readEntry(key: string): string | null {
 // higher quality than TheSportsDB so we check this first.
 const smLogoRegistry = new Map<string, string>();
 
+// Subscribers that want to be notified when new logos are registered
+// (used by ClubCrest to re-render when logos arrive after mount).
+type LogoListener = () => void;
+const logoListeners = new Set<LogoListener>();
+
+export function subscribeToLogoUpdates(fn: LogoListener): () => void {
+  logoListeners.add(fn);
+  return () => logoListeners.delete(fn);
+}
+
+// Sportmonks returns full official club names (e.g. "FC Barcelona", "Real Madrid CF").
+// Normalize them to the short display names used in standings/scorers.
+const SM_NAME_NORMALIZE: Record<string, string> = {
+  'FC Barcelona':              'Barcelona',
+  'Real Madrid CF':            'Real Madrid',
+  'Club Atlético de Madrid':   'Atletico Madrid',
+  'Villarreal CF':             'Villarreal',
+  'Real Betis Balompié':       'Betis',
+  'Sevilla FC':                'Sevilla',
+  'Valencia CF':               'Valencia',
+  'Real Sociedad':             'Real Sociedad',
+  'Arsenal FC':                'Arsenal',
+  'Manchester City FC':        'Man City',
+  'Liverpool FC':              'Liverpool',
+  'Chelsea FC':                'Chelsea',
+  'Tottenham Hotspur FC':      'Tottenham',
+  'Manchester United FC':      'Man United',
+  'Newcastle United FC':       'Newcastle',
+  'Aston Villa FC':            'Aston Villa',
+  'FC Internazionale Milano':  'Inter Milan',
+  'AC Milan':                  'AC Milan',
+  'Juventus FC':               'Juventus',
+  'SSC Napoli':                'Napoli',
+  'AS Roma':                   'Roma',
+  'SS Lazio':                  'Lazio',
+  'Atalanta BC':               'Atalanta',
+  'ACF Fiorentina':            'Fiorentina',
+  'FC Bayern München':         'Bayern Munich',
+  'Borussia Dortmund':         'Dortmund',
+  'Bayer 04 Leverkusen':       'Leverkusen',
+  'RB Leipzig':                'RB Leipzig',
+  'Eintracht Frankfurt':       'Frankfurt',
+  'VfB Stuttgart':             'Stuttgart',
+  'VfL Wolfsburg':             'Wolfsburg',
+  'Borussia Mönchengladbach':  'Gladbach',
+  'Paris Saint-Germain FC':    'PSG',
+  'Olympique Lyonnais':        'Lyon',
+  'AS Monaco FC':              'Monaco',
+  'Olympique de Marseille':    'Marseille',
+  'LOSC Lille':                'Lille',
+  'OGC Nice':                  'Nice',
+  'RC Lens':                   'Lens',
+  'Stade Rennais FC':          'Rennes',
+};
+
+function normalizeSmName(smName: string): string {
+  return SM_NAME_NORMALIZE[smName] ?? smName;
+}
+
 /** Register Sportmonks logos in bulk (called from useLeagueData after fetch). */
 export function registerSportmonksLogos(map: Record<string, string>) {
-  for (const [name, url] of Object.entries(map)) {
-    smLogoRegistry.set(name, url);
-    writeEntry(`team:${name}`, url); // also persist to localStorage cache
+  for (const [smName, url] of Object.entries(map)) {
+    const displayName = normalizeSmName(smName);
+    smLogoRegistry.set(displayName, url);
+    // Also index by the raw SM name in case any component uses it
+    smLogoRegistry.set(smName, url);
+    writeEntry(`team:${displayName}`, url);
   }
+  // Notify all mounted ClubCrest instances that new logos are available
+  logoListeners.forEach(fn => fn());
+}
+
+/** Register Sportmonks venues in bulk — returns normalized map for useLeagueData. */
+export function normalizeSportmonksVenues<T>(map: Record<string, T>): Record<string, T> {
+  const normalized: Record<string, T> = {};
+  for (const [smName, value] of Object.entries(map)) {
+    normalized[normalizeSmName(smName)] = value;
+    normalized[smName] = value; // keep raw name too
+  }
+  return normalized;
 }
 
 /** Look up a pre-registered Sportmonks logo synchronously (no fetch needed). */
