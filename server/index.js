@@ -122,6 +122,43 @@ app.get('/api/af/*', async (req, res) => {
   }
 });
 
+// Sportmonks Football API Proxy — powers live defender/goalkeeper stats
+// (tackles, interceptions, clearances, saves, clean sheets, rating).
+app.get('/api/sm/*', async (req, res) => {
+  try {
+    const path = req.params[0];
+    const cacheKey = getCacheKey(`sm/${path}`, req.query);
+
+    const cached = getFromCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
+    const params = new URLSearchParams(req.query);
+    params.set('api_token', process.env.SM_TOKEN);
+    const url = `https://api.sportmonks.com/v3/football/${path}?${params.toString()}`;
+
+    const response = await fetch(url);
+
+    if (response.status === 429) {
+      return res.status(429).json({ error: 'Rate limited by Sportmonks' });
+    }
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: `Sportmonks API error: ${response.statusText}`
+      });
+    }
+
+    const data = await response.json();
+    setCache(cacheKey, data);
+    res.json(data);
+  } catch (error) {
+    console.error('SM Proxy Error:', error);
+    res.status(500).json({ error: 'Failed to fetch from Sportmonks' });
+  }
+});
+
 // Social feed: posts scraped from X.com for a league's players, clubs,
 // league accounts and top commentators, ranked by the trending algorithm.
 app.get('/api/social/feed/:leagueId', (req, res) => {

@@ -22,6 +22,17 @@ export interface Player {
   team: string;
   goals: number;
   assists: number;
+  // Optional richer fields, populated only for live defender/goalkeeper
+  // stats (Sportmonks — see sportmonksService.ts). Absent for static
+  // fallback data and for goals/assists leaderboards.
+  photo?: string;
+  minutesPlayed?: number;
+  tacklesWon?: number;
+  interceptions?: number;
+  clearances?: number;
+  saves?: number;
+  goalsConceded?: number;
+  savePercentage?: number;
 }
 
 export interface LeagueMatch {
@@ -91,18 +102,18 @@ export const LEAGUE_DATA: Record<string, LeagueData> = {
       { rank: 5, name: 'Isco',                team: 'Betis',           goals: 4,  assists: 7 },
     ],
     topDefenders: [
-      { rank: 1, name: 'Antonio Rüdiger',    team: 'Real Madrid',     goals: 95, assists: 9 },
-      { rank: 2, name: 'Jules Koundé',       team: 'Barcelona',       goals: 93, assists: 8 },
-      { rank: 3, name: 'José Giménez',       team: 'Atletico Madrid', goals: 91, assists: 7 },
-      { rank: 4, name: 'Pau Torres',         team: 'Villarreal',      goals: 89, assists: 6 },
-      { rank: 5, name: 'Robin Le Normand',   team: 'Atletico Madrid', goals: 87, assists: 5 },
+      { rank: 1, name: 'Antonio Rüdiger',    team: 'Real Madrid',     goals: 9.0, assists: 9 },
+      { rank: 2, name: 'Jules Koundé',       team: 'Barcelona',       goals: 8.6, assists: 8 },
+      { rank: 3, name: 'José Giménez',       team: 'Atletico Madrid', goals: 8.2, assists: 7 },
+      { rank: 4, name: 'Pau Torres',         team: 'Villarreal',      goals: 7.8, assists: 6 },
+      { rank: 5, name: 'Robin Le Normand',   team: 'Atletico Madrid', goals: 7.4, assists: 5 },
     ],
     topKeepers: [
-      { rank: 1, name: 'Thibaut Courtois',   team: 'Real Madrid',     goals: 11, assists: 91 },
-      { rank: 2, name: 'Ter Stegen',         team: 'Barcelona',       goals: 9,  assists: 88 },
-      { rank: 3, name: 'Jan Oblak',          team: 'Atletico Madrid', goals: 8,  assists: 87 },
-      { rank: 4, name: 'Giorgi Mamardashvili',team: 'Valencia',       goals: 7,  assists: 85 },
-      { rank: 5, name: 'Álex Remiro',        team: 'Real Sociedad',   goals: 6,  assists: 84 },
+      { rank: 1, name: 'Thibaut Courtois',   team: 'Real Madrid',     goals: 11, assists: 8.2 },
+      { rank: 2, name: 'Ter Stegen',         team: 'Barcelona',       goals: 9,  assists: 7.6 },
+      { rank: 3, name: 'Jan Oblak',          team: 'Atletico Madrid', goals: 8,  assists: 7.4 },
+      { rank: 4, name: 'Giorgi Mamardashvili',team: 'Valencia',       goals: 7,  assists: 7.0 },
+      { rank: 5, name: 'Álex Remiro',        team: 'Real Sociedad',   goals: 6,  assists: 6.8 },
     ],
     matches: [
       { id: 1,  homeTeam: 'Real Madrid',     awayTeam: 'Barcelona',     status: 'live',     homeScore: 2, awayScore: 1, minute: 67 },
@@ -144,18 +155,18 @@ export const LEAGUE_DATA: Record<string, LeagueData> = {
       { rank: 5, name: 'Son Heung-min',     team: 'Tottenham',   goals: 9,  assists: 9 },
     ],
     topDefenders: [
-      { rank: 1, name: 'Rúben Dias',         team: 'Man City',    goals: 95, assists: 11 },
-      { rank: 2, name: 'Virgil van Dijk',    team: 'Liverpool',   goals: 93, assists: 9 },
-      { rank: 3, name: 'William Saliba',     team: 'Arsenal',     goals: 92, assists: 10 },
-      { rank: 4, name: 'Levi Colwill',       team: 'Chelsea',     goals: 89, assists: 8 },
-      { rank: 5, name: 'Pau Torres',         team: 'Aston Villa', goals: 87, assists: 7 },
+      { rank: 1, name: 'Rúben Dias',         team: 'Man City',    goals: 9.0, assists: 11 },
+      { rank: 2, name: 'Virgil van Dijk',    team: 'Liverpool',   goals: 8.6, assists: 9 },
+      { rank: 3, name: 'William Saliba',     team: 'Arsenal',     goals: 8.4, assists: 10 },
+      { rank: 4, name: 'Levi Colwill',       team: 'Chelsea',     goals: 7.8, assists: 8 },
+      { rank: 5, name: 'Pau Torres',         team: 'Aston Villa', goals: 7.4, assists: 7 },
     ],
     topKeepers: [
-      { rank: 1, name: 'Ederson',            team: 'Man City',    goals: 11, assists: 92 },
-      { rank: 2, name: 'Alisson',            team: 'Liverpool',   goals: 10, assists: 90 },
-      { rank: 3, name: 'David Raya',         team: 'Arsenal',     goals: 9,  assists: 88 },
-      { rank: 4, name: 'Emiliano Martínez',  team: 'Aston Villa', goals: 9,  assists: 87 },
-      { rank: 5, name: 'Robert Sánchez',     team: 'Chelsea',     goals: 7,  assists: 85 },
+      { rank: 1, name: 'Ederson',            team: 'Man City',    goals: 11, assists: 8.4 },
+      { rank: 2, name: 'Alisson',            team: 'Liverpool',   goals: 10, assists: 8.0 },
+      { rank: 3, name: 'David Raya',         team: 'Arsenal',     goals: 9,  assists: 7.6 },
+      { rank: 4, name: 'Emiliano Martínez',  team: 'Aston Villa', goals: 9,  assists: 7.4 },
+      { rank: 5, name: 'Robert Sánchez',     team: 'Chelsea',     goals: 7,  assists: 7.0 },
     ],
     matches: [
       { id: 5,  homeTeam: 'Man City',   awayTeam: 'Arsenal',     status: 'live',     homeScore: 1, awayScore: 1, minute: 45 },
@@ -197,18 +208,18 @@ export const LEAGUE_DATA: Record<string, LeagueData> = {
       { rank: 5, name: 'Ciro Immobile',     team: 'Lazio',      goals: 9,  assists: 5 },
     ],
     topDefenders: [
-      { rank: 1, name: 'Alessandro Bastoni',  team: 'Inter Milan', goals: 94, assists: 10 },
-      { rank: 2, name: 'Theo Hernández',      team: 'AC Milan',    goals: 92, assists: 8 },
-      { rank: 3, name: 'Gleison Bremer',      team: 'Juventus',    goals: 90, assists: 9 },
-      { rank: 4, name: 'Berat Djimsiti',      team: 'Atalanta',    goals: 88, assists: 7 },
-      { rank: 5, name: 'Mario Rui',           team: 'Napoli',      goals: 85, assists: 6 },
+      { rank: 1, name: 'Alessandro Bastoni',  team: 'Inter Milan', goals: 8.8, assists: 10 },
+      { rank: 2, name: 'Theo Hernández',      team: 'AC Milan',    goals: 8.4, assists: 8 },
+      { rank: 3, name: 'Gleison Bremer',      team: 'Juventus',    goals: 8.0, assists: 9 },
+      { rank: 4, name: 'Berat Djimsiti',      team: 'Atalanta',    goals: 7.6, assists: 7 },
+      { rank: 5, name: 'Mario Rui',           team: 'Napoli',      goals: 7.0, assists: 6 },
     ],
     topKeepers: [
-      { rank: 1, name: 'Yann Sommer',         team: 'Inter Milan', goals: 10, assists: 91 },
-      { rank: 2, name: 'Mike Maignan',        team: 'AC Milan',    goals: 9,  assists: 89 },
-      { rank: 3, name: 'Guglielmo Vicario',   team: 'Napoli',      goals: 8,  assists: 88 },
-      { rank: 4, name: 'Juan Musso',          team: 'Atalanta',    goals: 7,  assists: 86 },
-      { rank: 5, name: 'Michele Di Gregorio', team: 'Juventus',    goals: 7,  assists: 85 },
+      { rank: 1, name: 'Yann Sommer',         team: 'Inter Milan', goals: 10, assists: 8.2 },
+      { rank: 2, name: 'Mike Maignan',        team: 'AC Milan',    goals: 9,  assists: 7.8 },
+      { rank: 3, name: 'Guglielmo Vicario',   team: 'Napoli',      goals: 8,  assists: 7.6 },
+      { rank: 4, name: 'Juan Musso',          team: 'Atalanta',    goals: 7,  assists: 7.2 },
+      { rank: 5, name: 'Michele Di Gregorio', team: 'Juventus',    goals: 7,  assists: 7.0 },
     ],
     matches: [
       { id: 9,  homeTeam: 'Inter Milan', awayTeam: 'AC Milan',   status: 'upcoming', time: '19:45' },
@@ -250,18 +261,18 @@ export const LEAGUE_DATA: Record<string, LeagueData> = {
       { rank: 5, name: 'Granit Xhaka',    team: 'Leverkusen', goals: 4,  assists: 8 },
     ],
     topDefenders: [
-      { rank: 1, name: 'Kim Min-jae',      team: 'Bayern',     goals: 94, assists: 10 },
-      { rank: 2, name: 'Jonathan Tah',     team: 'Leverkusen', goals: 93, assists: 9 },
-      { rank: 3, name: 'Mats Hummels',     team: 'Dortmund',   goals: 91, assists: 8 },
-      { rank: 4, name: 'Willi Orbán',      team: 'RB Leipzig', goals: 89, assists: 7 },
-      { rank: 5, name: 'Timothy Chandler', team: 'Frankfurt',  goals: 86, assists: 6 },
+      { rank: 1, name: 'Kim Min-jae',      team: 'Bayern',     goals: 8.8, assists: 10 },
+      { rank: 2, name: 'Jonathan Tah',     team: 'Leverkusen', goals: 8.6, assists: 9 },
+      { rank: 3, name: 'Mats Hummels',     team: 'Dortmund',   goals: 8.2, assists: 8 },
+      { rank: 4, name: 'Willi Orbán',      team: 'RB Leipzig', goals: 7.8, assists: 7 },
+      { rank: 5, name: 'Timothy Chandler', team: 'Frankfurt',  goals: 7.2, assists: 6 },
     ],
     topKeepers: [
-      { rank: 1, name: 'Manuel Neuer',     team: 'Bayern',     goals: 10, assists: 90 },
-      { rank: 2, name: 'Lukáš Hrádecký',   team: 'Leverkusen', goals: 9,  assists: 88 },
-      { rank: 3, name: 'Gregor Kobel',     team: 'Dortmund',   goals: 8,  assists: 87 },
-      { rank: 4, name: 'Peter Gulácsi',    team: 'RB Leipzig', goals: 7,  assists: 85 },
-      { rank: 5, name: 'Kevin Trapp',      team: 'Frankfurt',  goals: 7,  assists: 84 },
+      { rank: 1, name: 'Manuel Neuer',     team: 'Bayern',     goals: 10, assists: 8.0 },
+      { rank: 2, name: 'Lukáš Hrádecký',   team: 'Leverkusen', goals: 9,  assists: 7.6 },
+      { rank: 3, name: 'Gregor Kobel',     team: 'Dortmund',   goals: 8,  assists: 7.4 },
+      { rank: 4, name: 'Peter Gulácsi',    team: 'RB Leipzig', goals: 7,  assists: 7.0 },
+      { rank: 5, name: 'Kevin Trapp',      team: 'Frankfurt',  goals: 7,  assists: 6.8 },
     ],
     matches: [
       { id: 13, homeTeam: 'Bayern',     awayTeam: 'Dortmund',   status: 'finished', homeScore: 3, awayScore: 2 },
@@ -303,18 +314,18 @@ export const LEAGUE_DATA: Record<string, LeagueData> = {
       { rank: 5, name: 'Gift Orban',          team: 'Lyon',    goals: 9,  assists: 5 },
     ],
     topDefenders: [
-      { rank: 1, name: 'Lucas Hernández',  team: 'PSG',      goals: 93, assists: 9 },
-      { rank: 2, name: 'Wilfried Singo',   team: 'Monaco',   goals: 90, assists: 8 },
-      { rank: 3, name: 'Clinton Mata',     team: 'Lyon',     goals: 88, assists: 7 },
-      { rank: 4, name: 'Leny Yoro',        team: 'Lille',    goals: 87, assists: 7 },
-      { rank: 5, name: 'Jean-Clair Todibo',team: 'Nice',     goals: 85, assists: 6 },
+      { rank: 1, name: 'Lucas Hernández',  team: 'PSG',      goals: 8.6, assists: 9 },
+      { rank: 2, name: 'Wilfried Singo',   team: 'Monaco',   goals: 8.0, assists: 8 },
+      { rank: 3, name: 'Clinton Mata',     team: 'Lyon',     goals: 7.6, assists: 7 },
+      { rank: 4, name: 'Leny Yoro',        team: 'Lille',    goals: 7.4, assists: 7 },
+      { rank: 5, name: 'Jean-Clair Todibo',team: 'Nice',     goals: 7.0, assists: 6 },
     ],
     topKeepers: [
-      { rank: 1, name: 'Gianluigi Donnarumma', team: 'PSG',    goals: 9,  assists: 91 },
-      { rank: 2, name: 'Philipp Köhn',         team: 'Monaco', goals: 8,  assists: 88 },
-      { rank: 3, name: 'Lucas Chevalier',      team: 'Lille',  goals: 7,  assists: 86 },
-      { rank: 4, name: 'Anthony Lopes',        team: 'Lyon',   goals: 6,  assists: 84 },
-      { rank: 5, name: 'Marcin Bułka',         team: 'Nice',   goals: 6,  assists: 83 },
+      { rank: 1, name: 'Gianluigi Donnarumma', team: 'PSG',    goals: 9,  assists: 8.2 },
+      { rank: 2, name: 'Philipp Köhn',         team: 'Monaco', goals: 8,  assists: 7.6 },
+      { rank: 3, name: 'Lucas Chevalier',      team: 'Lille',  goals: 7,  assists: 7.2 },
+      { rank: 4, name: 'Anthony Lopes',        team: 'Lyon',   goals: 6,  assists: 6.8 },
+      { rank: 5, name: 'Marcin Bułka',         team: 'Nice',   goals: 6,  assists: 6.6 },
     ],
     matches: [
       { id: 17, homeTeam: 'PSG',    awayTeam: 'Lyon',      status: 'upcoming', time: '20:00' },
@@ -356,18 +367,18 @@ export const LEAGUE_DATA: Record<string, LeagueData> = {
       { rank: 5, name: 'Kylian Mbappé',      team: 'Real Madrid', goals: 7, assists: 4 },
     ],
     topDefenders: [
-      { rank: 1, name: 'Virgil van Dijk',     team: 'Liverpool',      goals: 95, assists: 9 },
-      { rank: 2, name: 'William Saliba',      team: 'Arsenal',        goals: 93, assists: 8 },
-      { rank: 3, name: 'Alessandro Bastoni',  team: 'Inter Milan',    goals: 92, assists: 9 },
-      { rank: 4, name: 'Antonio Rüdiger',     team: 'Real Madrid',    goals: 91, assists: 7 },
-      { rank: 5, name: 'Jonathan Tah',        team: 'Leverkusen',     goals: 89, assists: 6 },
+      { rank: 1, name: 'Virgil van Dijk',     team: 'Liverpool',      goals: 9.0, assists: 9 },
+      { rank: 2, name: 'William Saliba',      team: 'Arsenal',        goals: 8.6, assists: 8 },
+      { rank: 3, name: 'Alessandro Bastoni',  team: 'Inter Milan',    goals: 8.4, assists: 9 },
+      { rank: 4, name: 'Antonio Rüdiger',     team: 'Real Madrid',    goals: 8.2, assists: 7 },
+      { rank: 5, name: 'Jonathan Tah',        team: 'Leverkusen',     goals: 7.8, assists: 6 },
     ],
     topKeepers: [
-      { rank: 1, name: 'Alisson',             team: 'Liverpool',      goals: 9,  assists: 92 },
-      { rank: 2, name: 'David Raya',          team: 'Arsenal',        goals: 8,  assists: 90 },
-      { rank: 3, name: 'Yann Sommer',         team: 'Inter Milan',    goals: 8,  assists: 89 },
-      { rank: 4, name: 'Thibaut Courtois',    team: 'Real Madrid',    goals: 7,  assists: 88 },
-      { rank: 5, name: 'Lukáš Hrádecký',       team: 'Leverkusen',     goals: 6,  assists: 86 },
+      { rank: 1, name: 'Alisson',             team: 'Liverpool',      goals: 9,  assists: 8.4 },
+      { rank: 2, name: 'David Raya',          team: 'Arsenal',        goals: 8,  assists: 8.0 },
+      { rank: 3, name: 'Yann Sommer',         team: 'Inter Milan',    goals: 8,  assists: 7.8 },
+      { rank: 4, name: 'Thibaut Courtois',    team: 'Real Madrid',    goals: 7,  assists: 7.6 },
+      { rank: 5, name: 'Lukáš Hrádecký',       team: 'Leverkusen',     goals: 6,  assists: 7.2 },
     ],
     matches: [
       { id: 21, homeTeam: 'Real Madrid', awayTeam: 'Inter Milan', status: 'live',     homeScore: 1, awayScore: 0, minute: 55 },
