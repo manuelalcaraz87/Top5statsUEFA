@@ -285,8 +285,8 @@ const ALL_CODES = Object.values(LEAGUE_CODES).join(',');
  */
 export async function fetchMatchWindow(): Promise<NormalizedMatch[]> {
   try {
-    const from = isoDate(-1);
-    const to = isoDate(2);
+    const from = isoDate(-3);
+    const to = isoDate(4);
     const data = await get<{ matches: Record<string, unknown>[] }>(
       'matches',
       {
@@ -303,19 +303,29 @@ export async function fetchMatchWindow(): Promise<NormalizedMatch[]> {
   }
 }
 
-/** Fetch standings for one league. */
-export async function fetchStandings(leagueId: string): Promise<NormalizedStanding[]> {
+export interface StandingsResult {
+  standings: NormalizedStanding[];
+  currentMatchday: number | null;
+  totalMatchdays: number | null;
+}
+
+/** Fetch standings for one league. Also returns the current matchday. */
+export async function fetchStandings(leagueId: string): Promise<StandingsResult> {
   try {
     const code = LEAGUE_CODES[leagueId];
-    if (!code) return [];
+    if (!code) return { standings: [], currentMatchday: null, totalMatchdays: null };
 
-    const data = await get<{ standings: { type: string; table: Record<string, unknown>[] }[] }>(
+    const data = await get<{
+      competition?: { numberOfAvailableSeasons?: number };
+      season?: { currentMatchday?: number };
+      standings: { type: string; table: Record<string, unknown>[] }[];
+    }>(
       `competitions/${code}/standings`,
       { season: CURRENT_SEASON.toString() }
     );
 
     const table = data.standings?.find(s => s.type === 'TOTAL')?.table ?? [];
-    return table.map(r => {
+    const standings = table.map(r => {
       const team = r.team as Record<string, string>;
       return {
         position: r.position as number,
@@ -331,9 +341,15 @@ export async function fetchStandings(leagueId: string): Promise<NormalizedStandi
         form:   parseForm(r.form as string),
       };
     });
+
+    const currentMatchday = (data as Record<string, unknown>).season
+      ? ((data as Record<string, unknown>).season as Record<string, unknown>).currentMatchday as number | null ?? null
+      : null;
+
+    return { standings, currentMatchday, totalMatchdays: null };
   } catch (error) {
     console.error('Failed to fetch standings for league:', leagueId, error);
-    return [];
+    return { standings: [], currentMatchday: null, totalMatchdays: null };
   }
 }
 

@@ -186,6 +186,13 @@ export function TopStatsSection() {
     })),
   ).sort((a, b) => b.value - a.value).slice(0, 5);
 
+  // Find the league standings for the overall points leader
+  const overallLeaderTeam = liveTeams[0];
+  const overallLeaderLeague = overallLeaderTeam
+    ? liveLeagues.find(l => l.name === overallLeaderTeam.league)
+    : null;
+  const overallLeaderStanding = overallLeaderLeague?.data.standings[0] ?? null;
+
   const liveDataLoading = liveLeagues.some(league => league.loading);
   const liveDefendersLoading = liveLeagues.some(league => league.loadingDefenders);
   const displayTeams = liveTeams.length > 0 ? liveTeams : liveDataLoading ? topTeams : [];
@@ -238,6 +245,8 @@ export function TopStatsSection() {
             assists={displayAssists}
             defenders={displayDefenders}
             keepers={displayKeepers}
+            leaderStanding={overallLeaderStanding}
+            leaderLeagueColor={overallLeaderLeague?.color ?? '#666'}
           />
         )}
         {activeTab === 'teams' && <TeamsList teams={displayTeams} />}
@@ -258,12 +267,39 @@ export function TopStatsSection() {
   );
 }
 
-function Top5Overview({ teams, scorers, assists, defenders, keepers }: { teams: Team[]; scorers: Player[]; assists: Player[]; defenders: Player[]; keepers: Player[] }) {
+function Top5Overview({ teams, scorers, assists, defenders, keepers, leaderStanding, leaderLeagueColor }: {
+  teams: Team[];
+  scorers: Player[];
+  assists: Player[];
+  defenders: Player[];
+  keepers: Player[];
+  leaderStanding: import('../data/leagueData').Standing | null;
+  leaderLeagueColor: string;
+}) {
   const topTeams = teams.length > 0 ? teams : [{ id: 0, name: 'No current data', league: '', leagueColor: '#666', points: 0, wins: 0, draws: 0, losses: 0, gd: 0 }];
   const topScorers = scorers.length > 0 ? scorers : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
   const topAssists = assists.length > 0 ? assists : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
   const topDefenders = defenders.length > 0 ? defenders : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
   const topKeepers = keepers.length > 0 ? keepers : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
+
+  // Derive live stats for the overall points leader
+  const leader = leaderStanding;
+  const played = leader ? leader.played : (topTeams[0].wins + topTeams[0].draws + topTeams[0].losses);
+  const wins = leader ? leader.won : topTeams[0].wins;
+  const draws = leader ? leader.drawn : topTeams[0].draws;
+  const losses = leader ? leader.lost : topTeams[0].losses;
+  const points = leader ? leader.points : topTeams[0].points;
+  const gf = leader ? leader.gf : 0;
+  const ga = leader ? leader.ga : 0;
+  const ppm = played > 0 ? (points / played).toFixed(2) : '0.00';
+  const form = leader?.form ?? [];
+  const formColors: Record<string, string> = { W: '#22c55e', D: '#f59e0b', L: '#ef4444' };
+  const color = leaderLeagueColor;
+
+  // Win/draw/loss distribution for pie chart
+  const winPct  = played > 0 ? Math.round((wins  / played) * 100) : 33;
+  const drawPct = played > 0 ? Math.round((draws / played) * 100) : 33;
+  const lossPct = played > 0 ? Math.max(0, 100 - winPct - drawPct) : 34;
 
   return (
     <div className="space-y-8">
@@ -294,126 +330,62 @@ function Top5Overview({ teams, scorers, assists, defenders, keepers }: { teams: 
             </div>
             <div className="flex items-center gap-5 ml-auto">
               <div className="text-center">
-                <p className="text-[11px] text-gray-400 mb-0.5">League</p>
-                <p className="text-2xl font-bold text-white">1st</p>
+                <p className="text-[11px] text-gray-400 mb-0.5">Points</p>
+                <p className="text-2xl font-bold text-white">{points}</p>
               </div>
               <div className="w-px h-10 bg-white/20" />
               <div className="text-center">
-                <p className="text-[11px] text-gray-400 mb-0.5">UCL</p>
-                <p className="text-2xl font-bold text-white">2nd</p>
+                <p className="text-[11px] text-gray-400 mb-0.5">GF</p>
+                <p className="text-2xl font-bold text-white">{gf || topTeams[0].gd + 'GD'}</p>
               </div>
               <div className="w-px h-10 bg-white/20" />
               <div className="text-center">
-                <p className="text-[11px] text-gray-400 mb-0.5">Cups</p>
-                <p className="text-2xl font-bold text-white">QF</p>
+                <p className="text-[11px] text-gray-400 mb-0.5">Pts/Game</p>
+                <p className="text-2xl font-bold text-white">{ppm}</p>
               </div>
             </div>
           </div>
         </div>
         <div className="bg-gradient-to-br from-blue-950/30 to-[#111111] rounded-lg border border-blue-900/30 p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-w-7xl">
-            {/* Last 5 Games + Doughnut Charts Card */}
+            {/* Form Card */}
             <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2 h-2 rounded-full bg-green-500" />
                 <p className="text-sm text-gray-400">Recent Form</p>
               </div>
-              
+
               <div className="mb-4">
-                <p className="text-xs text-gray-400 mb-2">Last 5 games</p>
+                <p className="text-xs text-gray-400 mb-2">Last {form.length > 0 ? form.length : 5} games</p>
                 <div className="flex items-center gap-1 mb-4">
-                  <span className="w-6 h-6 rounded bg-green-500 text-white text-xs flex items-center justify-center font-medium">W</span>
-                  <span className="w-6 h-6 rounded bg-green-500 text-white text-xs flex items-center justify-center font-medium">W</span>
-                  <span className="w-6 h-6 rounded bg-yellow-500 text-white text-xs flex items-center justify-center font-medium">D</span>
-                  <span className="w-6 h-6 rounded bg-yellow-500 text-white text-xs flex items-center justify-center font-medium">D</span>
-                  <span className="w-6 h-6 rounded bg-red-500 text-white text-xs flex items-center justify-center font-medium">L</span>
-                </div>
-              </div>
-              
-              {/* Wins Breakdown Doughnut Chart */}
-              <div className="mb-4">
-                <p className="text-xs text-gray-400 mb-2">Wins vs Tiers</p>
-                <div className="flex items-center gap-2">
-                  <div style={{ width: '60px', height: '60px', position: 'relative' }}>
-                    <PieChart width={60} height={60}>
-                      <Pie
-                        data={[
-                          { name: 'Top 5', value: 40 },
-                          { name: 'Middle', value: 35 },
-                          { name: 'Bottom 5', value: 25 },
-                        ]}
-                        cx={30}
-                        cy={30}
-                        startAngle={90}
-                        endAngle={-270}
-                        innerRadius={15}
-                        outerRadius={28}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        <Cell key="cell-0" fill="#22c55e" />
-                        <Cell key="cell-1" fill="#3b82f6" />
-                        <Cell key="cell-2" fill="#60a5fa" />
-                      </Pie>
-                    </PieChart>
-                  </div>
-                  <div className="text-xs space-y-1">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-green-500" />
-                      <span className="text-gray-600">40% vs top 5</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-blue-500" />
-                      <span className="text-gray-600">35% vs middle</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-blue-300" />
-                      <span className="text-gray-600">25% vs bottom 5</span>
-                    </div>
-                  </div>
+                  {form.length > 0
+                    ? form.map((f, i) => (
+                        <span key={i} className="w-6 h-6 rounded text-white text-xs flex items-center justify-center font-medium"
+                          style={{ backgroundColor: formColors[f] }}>{f}</span>
+                      ))
+                    : ['W','W','D','W','L'].map((f, i) => (
+                        <span key={i} className="w-6 h-6 rounded text-white text-xs flex items-center justify-center font-medium"
+                          style={{ backgroundColor: formColors[f] }}>{f}</span>
+                      ))
+                  }
                 </div>
               </div>
 
-              {/* Losses Breakdown Doughnut Chart */}
+              {/* W/D/L breakdown pie */}
               <div>
-                <p className="text-xs text-gray-400 mb-2">Losses vs Tiers</p>
+                <p className="text-xs text-gray-400 mb-2">Season record</p>
                 <div className="flex items-center gap-2">
-                  <div style={{ width: '60px', height: '60px', position: 'relative' }}>
-                    <PieChart width={60} height={60}>
-                      <Pie
-                        data={[
-                          { name: 'Top 5', value: 50 },
-                          { name: 'Middle', value: 30 },
-                          { name: 'Bottom 5', value: 20 },
-                        ]}
-                        cx={30}
-                        cy={30}
-                        startAngle={90}
-                        endAngle={-270}
-                        innerRadius={15}
-                        outerRadius={28}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        <Cell key="cell-0" fill="#ef4444" />
-                        <Cell key="cell-1" fill="#f97316" />
-                        <Cell key="cell-2" fill="#fb923c" />
-                      </Pie>
-                    </PieChart>
-                  </div>
+                  <PieChart width={60} height={60}>
+                    <Pie data={[{ value: winPct }, { value: drawPct }, { value: lossPct }]}
+                      cx={30} cy={30} startAngle={90} endAngle={-270}
+                      innerRadius={15} outerRadius={28} paddingAngle={2} dataKey="value">
+                      <Cell fill="#22c55e" /><Cell fill="#f59e0b" /><Cell fill="#ef4444" />
+                    </Pie>
+                  </PieChart>
                   <div className="text-xs space-y-1">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-red-500" />
-                      <span className="text-gray-600">50% vs top 5</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-orange-500" />
-                      <span className="text-gray-600">30% vs middle</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-orange-300" />
-                      <span className="text-gray-600">20% vs bottom 5</span>
-                    </div>
+                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-gray-400">{winPct}% wins</span></div>
+                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-500" /><span className="text-gray-400">{drawPct}% draws</span></div>
+                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500" /><span className="text-gray-400">{lossPct}% losses</span></div>
                   </div>
                 </div>
               </div>
@@ -426,115 +398,120 @@ function Top5Overview({ teams, scorers, assists, defenders, keepers }: { teams: 
                 <p className="text-sm text-gray-400">League Statistics</p>
               </div>
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Games Played</span>
-                  <span className="text-sm font-medium text-gray-200">{topTeams[0].wins + topTeams[0].draws + topTeams[0].losses}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Wins</span>
-                  <span className="text-sm font-medium text-green-600">{topTeams[0].wins}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Draws</span>
-                  <span className="text-sm font-medium text-yellow-600">{topTeams[0].draws}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Losses</span>
-                  <span className="text-sm font-medium text-red-600">{topTeams[0].losses}</span>
-                </div>
+                {[
+                  { label: 'Games Played', val: played,   cls: 'text-gray-200' },
+                  { label: 'Wins',         val: wins,     cls: 'text-green-500' },
+                  { label: 'Draws',        val: draws,    cls: 'text-yellow-500' },
+                  { label: 'Losses',       val: losses,   cls: 'text-red-500' },
+                ].map(r => (
+                  <div key={r.label} className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">{r.label}</span>
+                    <span className={`text-sm font-medium ${r.cls}`}>{r.val}</span>
+                  </div>
+                ))}
                 <div className="h-px bg-gray-800 my-2" />
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-500">Points</span>
-                  <span className="text-lg font-medium text-gray-100">{topTeams[0].points}</span>
+                  <span className="text-lg font-medium" style={{ color }}>{points}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Points/Match</span>
-                  <span className="text-lg font-medium text-blue-600">{(topTeams[0].points / (topTeams[0].wins + topTeams[0].draws + topTeams[0].losses)).toFixed(2)}</span>
+                  <span className="text-xs text-gray-500">Pts/Match</span>
+                  <span className="text-lg font-medium text-blue-400">{ppm}</span>
                 </div>
               </div>
             </div>
 
-            {/* UCL Statistics */}
+            {/* Goal Difference breakdown */}
             <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2 h-2 rounded-full bg-purple-500" />
-                <p className="text-sm text-gray-400">UCL Statistics</p>
+                <p className="text-sm text-gray-400">Goal Record</p>
               </div>
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Games Played</span>
-                  <span className="text-sm font-medium text-gray-200">6</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Wins</span>
-                  <span className="text-sm font-medium text-green-600">4</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Draws</span>
-                  <span className="text-sm font-medium text-yellow-600">1</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Losses</span>
-                  <span className="text-sm font-medium text-red-600">1</span>
-                </div>
-                <div className="h-px bg-gray-800 my-2" />
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Points</span>
-                  <span className="text-lg font-medium text-gray-100">13</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Points/Match</span>
-                  <span className="text-lg font-medium text-purple-600">2.17</span>
-                </div>
+                {[
+                  { label: 'Goals Scored',   val: gf,               cls: 'text-green-400' },
+                  { label: 'Goals Conceded', val: ga,               cls: 'text-red-400'   },
+                  { label: 'Goal Diff',      val: `+${gf - ga}`,    cls: 'text-blue-400'  },
+                  { label: 'Goals/Game',     val: played > 0 ? (gf / played).toFixed(2) : '–', cls: 'text-gray-200' },
+                ].map(r => (
+                  <div key={r.label} className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">{r.label}</span>
+                    <span className={`text-sm font-medium ${r.cls}`}>{r.val}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Possession */}
-            <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <p className="text-sm text-gray-400">Possession</p>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs text-gray-400">Avg on Wins</span>
-                    <span className="text-sm font-medium text-green-600">64%</span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-1.5">
-                    <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: '64%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs text-gray-400">Avg on Draws</span>
-                    <span className="text-sm font-medium text-yellow-600">58%</span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-1.5">
-                    <div className="bg-yellow-500 h-1.5 rounded-full transition-all" style={{ width: '58%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs text-gray-400">Avg on Losses</span>
-                    <span className="text-sm font-medium text-red-600">52%</span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-1.5">
-                    <div className="bg-red-500 h-1.5 rounded-full transition-all" style={{ width: '52%' }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Top 5 Score */}
+            {/* Top Scorer quick summary */}
             <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2 h-2 rounded-full bg-orange-500" />
-                <p className="text-sm text-gray-400">Top 5 Score</p>
+                <p className="text-sm text-gray-400">Top Scorer</p>
               </div>
-              <div className="flex items-center justify-center h-20">
-                <p className="text-sm text-gray-600 italic">Under construction</p>
+              {topScorers[0].name !== 'No current data' ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <PlayerAvatar name={topScorers[0].name} teamColor={topScorers[0].leagueColor} size={32} />
+                    <div>
+                      <p className="text-gray-200 text-xs font-semibold leading-tight">{topScorers[0].name}</p>
+                      <p className="text-gray-500 text-[10px]">{topScorers[0].team}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-around">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold" style={{ color: topScorers[0].leagueColor }}>{topScorers[0].value}</p>
+                      <p className="text-[10px] text-gray-500">Goals</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-gray-400">{topScorers[0].stat2}</p>
+                      <p className="text-[10px] text-gray-500">Assists</p>
+                    </div>
+                  </div>
+                  <div className="mt-1 text-center">
+                    <LeagueBadge league={topScorers[0].league} size={18} />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-20">
+                  <p className="text-sm text-gray-600 italic">Loading…</p>
+                </div>
+              )}
+            </div>
+
+            {/* Top Assister quick summary */}
+            <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                <p className="text-sm text-gray-400">Top Assister</p>
               </div>
+              {topAssists[0].name !== 'No current data' ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <PlayerAvatar name={topAssists[0].name} teamColor={topAssists[0].leagueColor} size={32} />
+                    <div>
+                      <p className="text-gray-200 text-xs font-semibold leading-tight">{topAssists[0].name}</p>
+                      <p className="text-gray-500 text-[10px]">{topAssists[0].team}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-around">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold" style={{ color: topAssists[0].leagueColor }}>{topAssists[0].value}</p>
+                      <p className="text-[10px] text-gray-500">Assists</p>
+                    </div>
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="text-2xl font-bold text-gray-400">{topAssists[0].stat2}</p>
+                      <p className="text-[10px] text-gray-500">Goals</p>
+                    </div>
+                  </div>
+                  <div className="mt-1 text-center">
+                    <LeagueBadge league={topAssists[0].league} size={18} />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-20">
+                  <p className="text-sm text-gray-600 italic">Loading…</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -580,31 +557,31 @@ function Top5Overview({ teams, scorers, assists, defenders, keepers }: { teams: 
           <div className="bg-gradient-to-br from-green-950/40 to-[#1a1a1a] p-4 rounded-lg border border-green-900/30">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topScorers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Conversion Rate</p>
+              <p className="text-xs text-gray-400">Goals + Assists</p>
             </div>
-            <p className="text-3xl font-light text-white">82%</p>
+            <p className="text-3xl font-light text-white">{topScorers[0].value + (topScorers[0].stat2 ?? 0)}</p>
             <div className="mt-3 w-full bg-green-900/40 rounded-full h-2">
-              <div className="bg-green-600 h-2 rounded-full" style={{ width: '82%' }} />
+              <div className="bg-green-600 h-2 rounded-full" style={{ width: `${((topScorers[0].value + (topScorers[0].stat2 ?? 0)) / 35) * 100}%` }} />
             </div>
           </div>
           <div className="bg-gradient-to-br from-green-950/40 to-[#1a1a1a] p-4 rounded-lg border border-green-900/30">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topScorers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Expected Goals</p>
+              <p className="text-xs text-gray-400">Goal Contributions</p>
             </div>
-            <p className="text-3xl font-light text-white">16.4</p>
+            <p className="text-3xl font-light text-white">{topScorers[0].value + (topScorers[0].stat2 ?? 0)}</p>
             <div className="mt-3 w-full bg-green-900/40 rounded-full h-2">
-              <div className="bg-green-600 h-2 rounded-full" style={{ width: `${(16.4 / 20) * 100}%` }} />
+              <div className="bg-green-600 h-2 rounded-full" style={{ width: `${((topScorers[0].value + (topScorers[0].stat2 ?? 0)) / 35) * 100}%` }} />
             </div>
           </div>
           <div className="bg-gradient-to-br from-green-950/40 to-[#1a1a1a] p-4 rounded-lg border border-green-900/30">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topScorers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Minutes/Goal</p>
+              <p className="text-xs text-gray-400">Goals Rank</p>
             </div>
-            <p className="text-3xl font-light text-white">68</p>
+            <p className="text-3xl font-light text-white">#1</p>
             <div className="mt-3 w-full bg-green-900/40 rounded-full h-2">
-              <div className="bg-green-600 h-2 rounded-full" style={{ width: `${(1 - 68 / 150) * 100}%` }} />
+              <div className="bg-green-600 h-2 rounded-full" style={{ width: '100%' }} />
             </div>
           </div>
         </div>
@@ -640,42 +617,42 @@ function Top5Overview({ teams, scorers, assists, defenders, keepers }: { teams: 
           <div className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topAssists[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Key Passes</p>
+              <p className="text-xs text-gray-400">Goals</p>
             </div>
             <p className="text-3xl font-light text-white">{topAssists[0].stat2}</p>
             <div className="mt-3 w-full bg-purple-900/40 rounded-full h-2">
-              <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${(topAssists[0].stat2! / 25) * 100}%` }} />
+              <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${((topAssists[0].stat2 ?? 0) / 25) * 100}%` }} />
             </div>
           </div>
           <div className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topAssists[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Expected Assists</p>
+              <p className="text-xs text-gray-400">Goal Contributions</p>
             </div>
-            <p className="text-3xl font-light text-white">10.8</p>
+            <p className="text-3xl font-light text-white">{topAssists[0].value + (topAssists[0].stat2 ?? 0)}</p>
             <div className="mt-3 w-full bg-purple-900/40 rounded-full h-2">
-              <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${(10.8 / 15) * 100}%` }} />
+              <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${((topAssists[0].value + (topAssists[0].stat2 ?? 0)) / 35) * 100}%` }} />
             </div>
           </div>
           <div className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topAssists[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Through Balls</p>
+              <p className="text-xs text-gray-400">Assists Rank</p>
             </div>
-            <p className="text-3xl font-light text-white">24</p>
+            <p className="text-3xl font-light text-white">#1</p>
             <div className="mt-3 w-full bg-purple-900/40 rounded-full h-2">
-              <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${(24 / 35) * 100}%` }} />
+              <div className="bg-purple-600 h-2 rounded-full" style={{ width: '100%' }} />
             </div>
           </div>
           <div className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topAssists[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Pass Accuracy</p>
+              <p className="text-xs text-gray-400">League</p>
             </div>
-            <p className="text-3xl font-light text-white">89%</p>
-            <div className="mt-3 w-full bg-purple-900/40 rounded-full h-2">
-              <div className="bg-purple-600 h-2 rounded-full" style={{ width: '89%' }} />
+            <div className="mt-2">
+              <LeagueBadge league={topAssists[0].league} size={32} />
             </div>
+            <p className="text-xs text-gray-400 mt-2">{topAssists[0].league}</p>
           </div>
         </div>
       </div>

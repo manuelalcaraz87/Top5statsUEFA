@@ -190,22 +190,24 @@ function LeagueTop5Overview({ data, league, topTeamScorer }: { data: LeagueData;
                 <div className="flex items-center gap-1 mb-4">
                   {leader.form.map((f, i) => <FormBadge key={i} result={f} />)}
                 </div>
-                <div className="mb-4">
-                  <p className="text-xs text-gray-400 mb-2">Wins vs Tiers</p>
-                  <div className="flex items-center gap-2">
-                    <PieChart width={60} height={60}>
-                      <Pie data={[{ value: 40 }, { value: 35 }, { value: 25 }]} cx={30} cy={30}
-                        startAngle={90} endAngle={-270} innerRadius={15} outerRadius={28} paddingAngle={2} dataKey="value">
-                        <Cell fill="#22c55e" /><Cell fill="#3b82f6" /><Cell fill="#60a5fa" />
-                      </Pie>
-                    </PieChart>
-                    <div className="text-xs space-y-1">
-                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-gray-600">40% top 5</span></div>
-                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500" /><span className="text-gray-600">35% mid</span></div>
-                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-300" /><span className="text-gray-600">25% btm</span></div>
+                {leader && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-400 mb-2">W / D / L</p>
+                    <div className="flex items-center gap-2">
+                      <PieChart width={60} height={60}>
+                        <Pie data={[{ value: leader.won }, { value: leader.drawn }, { value: leader.lost }]} cx={30} cy={30}
+                          startAngle={90} endAngle={-270} innerRadius={15} outerRadius={28} paddingAngle={2} dataKey="value">
+                          <Cell fill="#22c55e" /><Cell fill="#eab308" /><Cell fill="#ef4444" />
+                        </Pie>
+                      </PieChart>
+                      <div className="text-xs space-y-1">
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-gray-400">{Math.round((leader.won / leader.played) * 100)}% W</span></div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-500" /><span className="text-gray-400">{Math.round((leader.drawn / leader.played) * 100)}% D</span></div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500" /><span className="text-gray-400">{Math.round((leader.lost / leader.played) * 100)}% L</span></div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* League stats */}
@@ -264,30 +266,32 @@ function LeagueTop5Overview({ data, league, topTeamScorer }: { data: LeagueData;
                 </div>
               </div>
 
-              {/* Possession */}
-              <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                  <p className="text-sm text-gray-400">Possession</p>
-                </div>
-                <div className="space-y-3">
-                  {[
-                    { label: 'Avg on Wins',   pct: 63, cls: 'bg-green-500',  textCls: 'text-green-500' },
-                    { label: 'Avg on Draws',  pct: 57, cls: 'bg-yellow-500', textCls: 'text-yellow-500' },
-                    { label: 'Avg on Losses', pct: 51, cls: 'bg-red-500',    textCls: 'text-red-500' },
-                  ].map(r => (
-                    <div key={r.label}>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs text-gray-400">{r.label}</span>
-                        <span className={`text-sm font-medium ${r.textCls}`}>{r.pct}%</span>
+              {/* Goal record */}
+              {leader && (
+                <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <p className="text-sm text-gray-400">Goal Record</p>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Goals For',     val: leader.gf,  pct: Math.min((leader.gf / 80) * 100, 100),  cls: 'bg-green-500',  textCls: 'text-green-400' },
+                      { label: 'Goals Against', val: leader.ga,  pct: Math.min((leader.ga / 50) * 100, 100),  cls: 'bg-red-500',    textCls: 'text-red-400' },
+                      { label: 'Goal Diff',     val: `+${leader.gd}`, pct: Math.min((leader.gd / 50) * 100, 100), cls: 'bg-blue-500', textCls: 'text-blue-400' },
+                    ].map(r => (
+                      <div key={r.label}>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs text-gray-400">{r.label}</span>
+                          <span className={`text-sm font-medium ${r.textCls}`}>{r.val}</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-1.5">
+                          <div className={`${r.cls} h-1.5 rounded-full`} style={{ width: `${r.pct}%` }} />
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-700 rounded-full h-1.5">
-                        <div className={`${r.cls} h-1.5 rounded-full`} style={{ width: `${r.pct}%` }} />
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Top scorer quick card */}
               {leaderScorer && (
