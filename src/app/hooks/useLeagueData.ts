@@ -4,6 +4,7 @@ import {
   fetchTopScorers,
   type NormalizedStanding,
   type NormalizedScorer,
+  type StandingsResult,
 } from '../services/footballDataService';
 import {
   fetchDefendersAndKeepers,
@@ -14,7 +15,7 @@ import { LEAGUE_DATA, type LeagueData, type Player, type Standing } from '../dat
 
 // ── Per-league in-memory cache ────────────────────────────────────────────────
 
-interface StandingsCache { data: NormalizedStanding[]; timestamp: number }
+interface StandingsCache { data: StandingsResult; timestamp: number }
 interface ScorersCache   { data: NormalizedScorer[];   timestamp: number }
 interface DefendersCache {
   data: { defenders: NormalizedDefender[]; keepers: NormalizedKeeper[] };
@@ -117,7 +118,7 @@ export interface UseLeagueDataResult {
 export function useLeagueData(leagueId: string): UseLeagueDataResult {
   const staticData = LEAGUE_DATA[leagueId] as LeagueData | undefined;
 
-  const [standings, setStandings]           = useState<NormalizedStanding[] | null>(null);
+  const [standings, setStandings]           = useState<StandingsResult | null>(null);
   const [scorers,   setScorers]             = useState<NormalizedScorer[]   | null>(null);
   const [defenders, setDefenders]           = useState<NormalizedDefender[] | null>(null);
   const [keepers,   setKeepers]             = useState<NormalizedKeeper[]   | null>(null);
@@ -135,7 +136,7 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
     setDefenders(null);
     setKeepers(null);
 
-    // Standings
+    // Standings (also returns currentMatchday)
     const cachedSt = standingsCache.get(leagueId);
     if (cachedSt && Date.now() - cachedSt.timestamp < STANDINGS_TTL) {
       setStandings(cachedSt.data);
@@ -188,7 +189,7 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
   const data = useMemo<LeagueData>(() => {
     const base = staticData ?? LEAGUE_DATA['epl'];
 
-    const liveStandings = standings ? standings.map(toStanding) : null;
+    const liveStandings = standings ? standings.standings.map(toStanding) : null;
 
     // Scorers sorted by goals; assisters derived by re-sorting the same data by assists
     const liveScorers   = scorers !== null ? scorers.slice(0, 10).map(toScorer) : null;
@@ -202,17 +203,34 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
     const liveDefenders = defenders ? defenders.map(toDefenderPlayer) : null;
     const liveKeepers   = keepers   ? keepers.map(toKeeperPlayer)     : null;
 
+    // Derive live aggregate stats from standings data
+    const liveStandingRows = standings?.standings ?? null;
+    const liveStats = liveStandingRows && liveStandingRows.length > 0 ? (() => {
+      const totalPlayed = liveStandingRows.reduce((s, r) => s + r.played, 0) / 2;
+      const totalGoals  = liveStandingRows.reduce((s, r) => s + r.gf, 0) / 2;
+      const totalHomeWins = liveStandingRows.reduce((s, r) => s + r.won, 0) / 2;
+      return {
+        totalGoals: Math.round(totalGoals),
+        goalsPerGame: totalPlayed > 0 ? Math.round((totalGoals / totalPlayed) * 100) / 100 : base.stats.goalsPerGame,
+        matchesPlayed: Math.round(totalPlayed),
+        homeWinPct: totalPlayed > 0 ? Math.round((totalHomeWins / totalPlayed) * 100) : base.stats.homeWinPct,
+        topVenue: base.stats.topVenue,
+      };
+    })() : null;
+
     return {
       ...base,
-      standings:    liveStandings    ?? base.standings,
-      topScorers:   liveScorers      ?? base.topScorers,
-      topAssisters: liveAssisters    ?? base.topAssisters,
-      topDefenders: liveDefenders    ?? base.topDefenders,
-      topKeepers:   liveKeepers      ?? base.topKeepers,
+      standings:       liveStandings  ?? base.standings,
+      topScorers:      liveScorers    ?? base.topScorers,
+      topAssisters:    liveAssisters  ?? base.topAssisters,
+      topDefenders:    liveDefenders  ?? base.topDefenders,
+      topKeepers:      liveKeepers    ?? base.topKeepers,
+      currentMatchday: standings?.currentMatchday ?? base.currentMatchday,
+      stats:           liveStats      ?? base.stats,
     };
   }, [staticData, standings, scorers, defenders, keepers]);
 
-  const leaderTeam = standings?.[0]?.team ?? data.standings[0]?.team;
+  const leaderTeam = standings?.standings?.[0]?.team ?? data.standings[0]?.team;
   const topTeamScorer = scorers !== null
     ? (scorers.find(s => s.team === leaderTeam) ? toScorer(scorers.find(s => s.team === leaderTeam)!) : null)
     : data.topScorers.find(s => s.team === leaderTeam) ?? data.topScorers[0] ?? null;
