@@ -413,11 +413,11 @@ function LeagueTop5Overview({ data, league, topTeamScorer }: { data: LeagueData;
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {[
-              { label: 'Rating',        val: defender.goals,              pct: (defender.goals - 80) / 20 },
+              { label: 'Rating',        val: defender.goals.toFixed(1),   pct: (defender.goals - 6) / 4 },
               { label: 'Clean Sheets',  val: defender.assists,            pct: defender.assists / 12 },
-              { label: 'Tackles Won',   val: 67,                          pct: 67 / 80 },
-              { label: 'Interceptions', val: 52,                          pct: 52 / 70 },
-              { label: 'Clearances',    val: 89,                          pct: 89 / 110 },
+              { label: 'Tackles Won',   val: defender.tacklesWon    ?? 67, pct: (defender.tacklesWon    ?? 67) / 80 },
+              { label: 'Interceptions', val: defender.interceptions ?? 52, pct: (defender.interceptions ?? 52) / 70 },
+              { label: 'Clearances',    val: defender.clearances    ?? 89, pct: (defender.clearances    ?? 89) / 110 },
             ].map(({ label, val, pct }) => (
               <div key={label} className="bg-gradient-to-br from-orange-950/40 to-[#1a1a1a] p-4 rounded-lg border border-orange-900/30">
                 <div className="flex items-center gap-2 mb-2">
@@ -451,11 +451,11 @@ function LeagueTop5Overview({ data, league, topTeamScorer }: { data: LeagueData;
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {[
-              { label: 'Clean Sheets',    val: keeper.goals,               pct: keeper.goals / 17 },
-              { label: 'Rating',          val: keeper.assists,             pct: (keeper.assists - 80) / 20 },
-              { label: 'Saves',           val: 78,                         pct: 78 / 100 },
-              { label: 'Save %',          val: '76%',                      pct: 0.76 },
-              { label: 'Penalties Saved', val: 3,                          pct: 3 / 5 },
+              { label: 'Clean Sheets',    val: keeper.goals,                            pct: keeper.goals / 17 },
+              { label: 'Rating',          val: keeper.assists.toFixed(1),                pct: (keeper.assists - 6) / 4 },
+              { label: 'Saves',           val: keeper.saves          ?? 78,              pct: (keeper.saves ?? 78) / 100 },
+              { label: 'Save %',          val: `${keeper.savePercentage ?? 76}%`,        pct: (keeper.savePercentage ?? 76) / 100 },
+              { label: 'Minutes Played',  val: keeper.minutesPlayed  ?? 1530,            pct: (keeper.minutesPlayed ?? 1530) / 1800 },
             ].map(({ label, val, pct }) => (
               <div key={label} className="bg-gradient-to-br from-indigo-950/40 to-[#1a1a1a] p-4 rounded-lg border border-indigo-900/30">
                 <div className="flex items-center gap-2 mb-2">

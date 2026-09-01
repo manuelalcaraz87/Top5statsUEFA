@@ -34,6 +34,14 @@ interface Player {
   leagueColor: string;
   value: number;
   stat2?: number;
+  // Optional richer fields, populated only for live defender/goalkeeper
+  // stats (Sportmonks — see sportmonksService.ts / useLeagueData.ts).
+  tacklesWon?: number;
+  interceptions?: number;
+  clearances?: number;
+  saves?: number;
+  savePercentage?: number;
+  minutesPlayed?: number;
 }
 
 interface Team {
@@ -73,19 +81,19 @@ const topAssists: Player[] = [
 ];
 
 const topDefenders: Player[] = [
-  { id: 1, name: 'Rúben Dias', team: 'Man City', league: 'EPL', leagueColor: '#3d195b', value: 95, stat2: 8 },
-  { id: 2, name: 'Antonio Rüdiger', team: 'Real Madrid', league: 'La Liga', leagueColor: '#ee8707', value: 94, stat2: 7 },
-  { id: 3, name: 'Kim Min-jae', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#d20515', value: 93, stat2: 6 },
-  { id: 4, name: 'Alessandro Bastoni', team: 'Inter Milan', league: 'Serie A', leagueColor: '#024494', value: 92, stat2: 5 },
-  { id: 5, name: 'Marquinhos', team: 'PSG', league: 'Ligue 1', leagueColor: '#dae025', value: 91, stat2: 5 },
+  { id: 1, name: 'Rúben Dias', team: 'Man City', league: 'EPL', leagueColor: '#3d195b', value: 9.0, stat2: 8 },
+  { id: 2, name: 'Antonio Rüdiger', team: 'Real Madrid', league: 'La Liga', leagueColor: '#ee8707', value: 8.8, stat2: 7 },
+  { id: 3, name: 'Kim Min-jae', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#d20515', value: 8.6, stat2: 6 },
+  { id: 4, name: 'Alessandro Bastoni', team: 'Inter Milan', league: 'Serie A', leagueColor: '#024494', value: 8.4, stat2: 5 },
+  { id: 5, name: 'Marquinhos', team: 'PSG', league: 'Ligue 1', leagueColor: '#dae025', value: 8.2, stat2: 5 },
 ];
 
 const topKeepers: Player[] = [
-  { id: 1, name: 'Ederson', team: 'Man City', league: 'EPL', leagueColor: '#3d195b', value: 12, stat2: 89 },
-  { id: 2, name: 'Thibaut Courtois', team: 'Real Madrid', league: 'La Liga', leagueColor: '#ee8707', value: 11, stat2: 88 },
-  { id: 3, name: 'Mike Maignan', team: 'AC Milan', league: 'Serie A', leagueColor: '#024494', value: 10, stat2: 87 },
-  { id: 4, name: 'Manuel Neuer', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#d20515', value: 10, stat2: 86 },
-  { id: 5, name: 'Gianluigi Donnarumma', team: 'PSG', league: 'Ligue 1', leagueColor: '#dae025', value: 9, stat2: 85 },
+  { id: 1, name: 'Ederson', team: 'Man City', league: 'EPL', leagueColor: '#3d195b', value: 12, stat2: 7.8 },
+  { id: 2, name: 'Thibaut Courtois', team: 'Real Madrid', league: 'La Liga', leagueColor: '#ee8707', value: 11, stat2: 7.6 },
+  { id: 3, name: 'Mike Maignan', team: 'AC Milan', league: 'Serie A', leagueColor: '#024494', value: 10, stat2: 7.4 },
+  { id: 4, name: 'Manuel Neuer', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#d20515', value: 10, stat2: 7.2 },
+  { id: 5, name: 'Gianluigi Donnarumma', team: 'PSG', league: 'Ligue 1', leagueColor: '#dae025', value: 9, stat2: 7.0 },
 ];
 
 type TabType = 'top5' | 'teams' | 'goals' | 'assists' | 'defender' | 'gk';
@@ -99,11 +107,11 @@ export function TopStatsSection() {
   const ligue1 = useLeagueData('ligue-1');
 
   const liveLeagues = [
-    { id: 'la-liga', name: 'La Liga', color: '#ee8707', data: laLiga.data, loading: laLiga.loadingStandings || laLiga.loadingScorers },
-    { id: 'epl', name: 'EPL', color: '#3d195b', data: epl.data, loading: epl.loadingStandings || epl.loadingScorers },
-    { id: 'serie-a', name: 'Serie A', color: '#024494', data: serieA.data, loading: serieA.loadingStandings || serieA.loadingScorers },
-    { id: 'bundesliga', name: 'Bundesliga', color: '#d20515', data: bundesliga.data, loading: bundesliga.loadingStandings || bundesliga.loadingScorers },
-    { id: 'ligue-1', name: 'Ligue 1', color: '#dae025', data: ligue1.data, loading: ligue1.loadingStandings || ligue1.loadingScorers },
+    { id: 'la-liga', name: 'La Liga', color: '#ee8707', data: laLiga.data, loading: laLiga.loadingStandings || laLiga.loadingScorers, loadingDefenders: laLiga.loadingDefenders },
+    { id: 'epl', name: 'EPL', color: '#3d195b', data: epl.data, loading: epl.loadingStandings || epl.loadingScorers, loadingDefenders: epl.loadingDefenders },
+    { id: 'serie-a', name: 'Serie A', color: '#024494', data: serieA.data, loading: serieA.loadingStandings || serieA.loadingScorers, loadingDefenders: serieA.loadingDefenders },
+    { id: 'bundesliga', name: 'Bundesliga', color: '#d20515', data: bundesliga.data, loading: bundesliga.loadingStandings || bundesliga.loadingScorers, loadingDefenders: bundesliga.loadingDefenders },
+    { id: 'ligue-1', name: 'Ligue 1', color: '#dae025', data: ligue1.data, loading: ligue1.loadingStandings || ligue1.loadingScorers, loadingDefenders: ligue1.loadingDefenders },
   ];
 
   const liveTeams: Team[] = liveLeagues.flatMap(league =>
@@ -145,10 +153,46 @@ export function TopStatsSection() {
     })),
   ).sort((a, b) => b.value - a.value).slice(0, 5);
 
+  // Defenders: ranked by rating (goals field holds rating for this list — see
+  // useLeagueData.ts toDefenderPlayer). Goalkeepers: ranked by clean sheets.
+  const liveDefenders: Player[] = liveLeagues.flatMap(league =>
+    league.data.topDefenders.map(player => ({
+      id: player.rank,
+      name: player.name,
+      team: player.team,
+      league: league.name,
+      leagueColor: league.color,
+      value: player.goals,
+      stat2: player.assists,
+      tacklesWon: player.tacklesWon,
+      interceptions: player.interceptions,
+      clearances: player.clearances,
+      minutesPlayed: player.minutesPlayed,
+    })),
+  ).sort((a, b) => b.value - a.value).slice(0, 5);
+
+  const liveKeepers: Player[] = liveLeagues.flatMap(league =>
+    league.data.topKeepers.map(player => ({
+      id: player.rank,
+      name: player.name,
+      team: player.team,
+      league: league.name,
+      leagueColor: league.color,
+      value: player.goals,
+      stat2: player.assists,
+      saves: player.saves,
+      savePercentage: player.savePercentage,
+      minutesPlayed: player.minutesPlayed,
+    })),
+  ).sort((a, b) => b.value - a.value).slice(0, 5);
+
   const liveDataLoading = liveLeagues.some(league => league.loading);
+  const liveDefendersLoading = liveLeagues.some(league => league.loadingDefenders);
   const displayTeams = liveTeams.length > 0 ? liveTeams : liveDataLoading ? topTeams : [];
   const displayScorers = liveScorers.length > 0 ? liveScorers : liveDataLoading ? topScorers : [];
   const displayAssists = liveAssists.length > 0 ? liveAssists : liveDataLoading ? topAssists : [];
+  const displayDefenders = liveDefenders.length > 0 ? liveDefenders : liveDefendersLoading ? topDefenders : [];
+  const displayKeepers = liveKeepers.length > 0 ? liveKeepers : liveDefendersLoading ? topKeepers : [];
 
   const tabs = [
     { id: 'top5' as TabType, label: 'Top 5', icon: Trophy },
@@ -192,22 +236,34 @@ export function TopStatsSection() {
             teams={displayTeams}
             scorers={displayScorers}
             assists={displayAssists}
+            defenders={displayDefenders}
+            keepers={displayKeepers}
           />
         )}
         {activeTab === 'teams' && <TeamsList teams={displayTeams} />}
         {activeTab === 'goals' && <PlayersList players={displayScorers} title="Top Scorers" subtitle="Goals / Assists" />}
         {activeTab === 'assists' && <PlayersList players={displayAssists} title="Top Assists" subtitle="Assists / Goals" />}
-        {activeTab === 'defender' && <UnavailableStats title="Top Defenders" />}
-        {activeTab === 'gk' && <UnavailableStats title="Top Goalkeepers" />}
+        {activeTab === 'defender' && (
+          displayDefenders.length > 0
+            ? <PlayersList players={displayDefenders} title="Top Defenders" subtitle="Rating / Clean Sheets" />
+            : <UnavailableStats title="Top Defenders" />
+        )}
+        {activeTab === 'gk' && (
+          displayKeepers.length > 0
+            ? <PlayersList players={displayKeepers} title="Top Goalkeepers" subtitle="Clean Sheets / Rating" />
+            : <UnavailableStats title="Top Goalkeepers" />
+        )}
       </div>
     </div>
   );
 }
 
-function Top5Overview({ teams, scorers, assists }: { teams: Team[]; scorers: Player[]; assists: Player[] }) {
+function Top5Overview({ teams, scorers, assists, defenders, keepers }: { teams: Team[]; scorers: Player[]; assists: Player[]; defenders: Player[]; keepers: Player[] }) {
   const topTeams = teams.length > 0 ? teams : [{ id: 0, name: 'No current data', league: '', leagueColor: '#666', points: 0, wins: 0, draws: 0, losses: 0, gd: 0 }];
   const topScorers = scorers.length > 0 ? scorers : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
   const topAssists = assists.length > 0 ? assists : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
+  const topDefenders = defenders.length > 0 ? defenders : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
+  const topKeepers = keepers.length > 0 ? keepers : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
 
   return (
     <div className="space-y-8">
@@ -646,9 +702,9 @@ function Top5Overview({ teams, scorers, assists }: { teams: Team[]; scorers: Pla
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topDefenders[0].leagueColor }} />
               <p className="text-xs text-gray-400">Rating</p>
             </div>
-            <p className="text-3xl font-light text-white">{topDefenders[0].value}</p>
+            <p className="text-3xl font-light text-white">{topDefenders[0].value.toFixed(1)}</p>
             <div className="mt-3 w-full bg-orange-900/40 rounded-full h-2">
-              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${((topDefenders[0].value - 80) / 20) * 100}%` }} />
+              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${Math.min(Math.max(((topDefenders[0].value - 6) / 4) * 100, 0), 100)}%` }} />
             </div>
           </div>
           <div className="bg-gradient-to-br from-orange-950/40 to-[#1a1a1a] p-4 rounded-lg border border-orange-900/30">
@@ -666,9 +722,9 @@ function Top5Overview({ teams, scorers, assists }: { teams: Team[]; scorers: Pla
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topDefenders[0].leagueColor }} />
               <p className="text-xs text-gray-400">Tackles Won</p>
             </div>
-            <p className="text-3xl font-light text-white">67</p>
+            <p className="text-3xl font-light text-white">{topDefenders[0].tacklesWon ?? 67}</p>
             <div className="mt-3 w-full bg-orange-900/40 rounded-full h-2">
-              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${(67 / 80) * 100}%` }} />
+              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${((topDefenders[0].tacklesWon ?? 67) / 80) * 100}%` }} />
             </div>
           </div>
           <div className="bg-gradient-to-br from-orange-950/40 to-[#1a1a1a] p-4 rounded-lg border border-orange-900/30">
@@ -676,9 +732,9 @@ function Top5Overview({ teams, scorers, assists }: { teams: Team[]; scorers: Pla
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topDefenders[0].leagueColor }} />
               <p className="text-xs text-gray-400">Interceptions</p>
             </div>
-            <p className="text-3xl font-light text-white">52</p>
+            <p className="text-3xl font-light text-white">{topDefenders[0].interceptions ?? 52}</p>
             <div className="mt-3 w-full bg-orange-900/40 rounded-full h-2">
-              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${(52 / 70) * 100}%` }} />
+              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${((topDefenders[0].interceptions ?? 52) / 70) * 100}%` }} />
             </div>
           </div>
           <div className="bg-gradient-to-br from-orange-950/40 to-[#1a1a1a] p-4 rounded-lg border border-orange-900/30">
@@ -686,9 +742,9 @@ function Top5Overview({ teams, scorers, assists }: { teams: Team[]; scorers: Pla
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topDefenders[0].leagueColor }} />
               <p className="text-xs text-gray-400">Clearances</p>
             </div>
-            <p className="text-3xl font-light text-white">89</p>
+            <p className="text-3xl font-light text-white">{topDefenders[0].clearances ?? 89}</p>
             <div className="mt-3 w-full bg-orange-900/40 rounded-full h-2">
-              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${(89 / 110) * 100}%` }} />
+              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${((topDefenders[0].clearances ?? 89) / 110) * 100}%` }} />
             </div>
           </div>
         </div>
@@ -726,9 +782,9 @@ function Top5Overview({ teams, scorers, assists }: { teams: Team[]; scorers: Pla
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topKeepers[0].leagueColor }} />
               <p className="text-xs text-gray-400">Rating</p>
             </div>
-            <p className="text-3xl font-light text-white">{topKeepers[0].stat2}</p>
+            <p className="text-3xl font-light text-white">{topKeepers[0].stat2!.toFixed(1)}</p>
             <div className="mt-3 w-full bg-indigo-900/40 rounded-full h-2">
-              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${((topKeepers[0].stat2! - 80) / 20) * 100}%` }} />
+              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${Math.min(Math.max(((topKeepers[0].stat2! - 6) / 4) * 100, 0), 100)}%` }} />
             </div>
           </div>
           <div className="bg-gradient-to-br from-indigo-950/40 to-[#1a1a1a] p-4 rounded-lg border border-indigo-900/30">
@@ -736,9 +792,9 @@ function Top5Overview({ teams, scorers, assists }: { teams: Team[]; scorers: Pla
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topKeepers[0].leagueColor }} />
               <p className="text-xs text-gray-400">Saves</p>
             </div>
-            <p className="text-3xl font-light text-white">78</p>
+            <p className="text-3xl font-light text-white">{topKeepers[0].saves ?? 78}</p>
             <div className="mt-3 w-full bg-indigo-900/40 rounded-full h-2">
-              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${(78 / 100) * 100}%` }} />
+              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${((topKeepers[0].saves ?? 78) / 100) * 100}%` }} />
             </div>
           </div>
           <div className="bg-gradient-to-br from-indigo-950/40 to-[#1a1a1a] p-4 rounded-lg border border-indigo-900/30">
@@ -746,19 +802,19 @@ function Top5Overview({ teams, scorers, assists }: { teams: Team[]; scorers: Pla
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topKeepers[0].leagueColor }} />
               <p className="text-xs text-gray-400">Save %</p>
             </div>
-            <p className="text-3xl font-light text-white">76%</p>
+            <p className="text-3xl font-light text-white">{topKeepers[0].savePercentage ?? 76}%</p>
             <div className="mt-3 w-full bg-indigo-900/40 rounded-full h-2">
-              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: '76%' }} />
+              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${topKeepers[0].savePercentage ?? 76}%` }} />
             </div>
           </div>
           <div className="bg-gradient-to-br from-indigo-950/40 to-[#1a1a1a] p-4 rounded-lg border border-indigo-900/30">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topKeepers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Penalties Saved</p>
+              <p className="text-xs text-gray-400">Minutes Played</p>
             </div>
-            <p className="text-3xl font-light text-white">3</p>
+            <p className="text-3xl font-light text-white">{topKeepers[0].minutesPlayed ?? 1530}</p>
             <div className="mt-3 w-full bg-indigo-900/40 rounded-full h-2">
-              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${(3 / 5) * 100}%` }} />
+              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${((topKeepers[0].minutesPlayed ?? 1530) / 1800) * 100}%` }} />
             </div>
           </div>
         </div>

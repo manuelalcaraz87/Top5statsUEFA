@@ -5,18 +5,31 @@ import {
   type NormalizedStanding,
   type NormalizedScorer,
 } from '../services/footballDataService';
+import {
+  fetchDefendersAndKeepers,
+  type NormalizedDefender,
+  type NormalizedKeeper,
+} from '../services/sportmonksService';
 import { LEAGUE_DATA, type LeagueData, type Player, type Standing } from '../data/leagueData';
 
 // ── Per-league in-memory cache ────────────────────────────────────────────────
 
 interface StandingsCache { data: NormalizedStanding[]; timestamp: number }
 interface ScorersCache   { data: NormalizedScorer[];   timestamp: number }
+interface DefendersCache {
+  data: { defenders: NormalizedDefender[]; keepers: NormalizedKeeper[] };
+  timestamp: number;
+}
 
 const standingsCache = new Map<string, StandingsCache>();
 const scorersCache   = new Map<string, ScorersCache>();
+const defendersCache = new Map<string, DefendersCache>();
 
 const STANDINGS_TTL = 10 * 60_000; // 10 min
 const SCORERS_TTL   = 30 * 60_000; // 30 min
+// Longer TTL: fetching defenders/keepers costs ~1 request per team
+// (Sportmonks has no bulk "top defenders" endpoint), so refresh sparingly.
+const DEFENDERS_TTL = 60 * 60_000; // 1 hour
 
 // ── Adapters: API → leagueData.ts internal types ─────────────────────────────
 
@@ -54,13 +67,49 @@ function toScorer(s: NormalizedScorer): Player {
   };
 }
 
+/** Round a 0-10 rating to 1 decimal for clean display everywhere it's rendered. */
+function roundRating(rating: number): number {
+  return Math.round(rating * 10) / 10;
+}
+
+function toDefenderPlayer(d: NormalizedDefender): Player {
+  return {
+    rank:          d.rank,
+    name:          d.name,
+    team:          d.team,
+    goals:         roundRating(d.rating), // Rating (0-10) — see LeaguePlayersList "Rating / Clean Sheets"
+    assists:       d.cleanSheets,         // Clean Sheets
+    photo:         d.photo,
+    minutesPlayed: d.minutesPlayed,
+    tacklesWon:    d.tacklesWon,
+    interceptions: d.interceptions,
+    clearances:    d.clearances,
+  };
+}
+
+function toKeeperPlayer(k: NormalizedKeeper): Player {
+  return {
+    rank:           k.rank,
+    name:           k.name,
+    team:           k.team,
+    goals:          k.cleanSheets,        // Clean Sheets — see LeaguePlayersList "Clean Sheets / Rating"
+    assists:        roundRating(k.rating),// Rating (0-10)
+    photo:          k.photo,
+    minutesPlayed:  k.minutesPlayed,
+    saves:          k.saves,
+    goalsConceded:  k.goalsConceded,
+    savePercentage: k.savePercentage,
+  };
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export interface UseLeagueDataResult {
-  /** Merged LeagueData: live standings/scorers overlaid on static fallback */
+  /** Merged LeagueData: live standings/scorers/defenders/keepers overlaid on static fallback */
   data: LeagueData;
   loadingStandings: boolean;
   loadingScorers: boolean;
+  loadingDefenders: boolean;
   isLive: boolean;
   topTeamScorer: Player | null;
 }
@@ -70,15 +119,21 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
 
   const [standings, setStandings]           = useState<NormalizedStanding[] | null>(null);
   const [scorers,   setScorers]             = useState<NormalizedScorer[]   | null>(null);
+  const [defenders, setDefenders]           = useState<NormalizedDefender[] | null>(null);
+  const [keepers,   setKeepers]             = useState<NormalizedKeeper[]   | null>(null);
   const [loadingStandings, setLoadingSt]    = useState(true);
   const [loadingScorers,   setLoadingSc]    = useState(true);
+  const [loadingDefenders, setLoadingDef]   = useState(true);
 
   useEffect(() => {
     if (!leagueId) return;
     setLoadingSt(true);
     setLoadingSc(true);
+    setLoadingDef(true);
     setStandings(null);
     setScorers(null);
+    setDefenders(null);
+    setKeepers(null);
 
     // Standings
     const cachedSt = standingsCache.get(leagueId);
@@ -109,6 +164,25 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
         .catch(e => console.warn('[useLeagueData] scorers failed:', e))
         .finally(() => setLoadingSc(false));
     }
+
+    // Defenders + goalkeepers (Sportmonks — not available for every league, see sportmonksService.ts)
+    const cachedDef = defendersCache.get(leagueId);
+    if (cachedDef && Date.now() - cachedDef.timestamp < DEFENDERS_TTL) {
+      setDefenders(cachedDef.data.defenders);
+      setKeepers(cachedDef.data.keepers);
+      setLoadingDef(false);
+    } else {
+      fetchDefendersAndKeepers(leagueId)
+        .then(data => {
+          if (data.defenders.length > 0 || data.keepers.length > 0) {
+            defendersCache.set(leagueId, { data, timestamp: Date.now() });
+            setDefenders(data.defenders);
+            setKeepers(data.keepers);
+          }
+        })
+        .catch(e => console.warn('[useLeagueData] defenders/keepers failed:', e))
+        .finally(() => setLoadingDef(false));
+    }
   }, [leagueId]);
 
   const data = useMemo<LeagueData>(() => {
@@ -125,13 +199,18 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
         .map((s, i) => toScorer({ ...s, rank: i + 1 }))
       : null;
 
+    const liveDefenders = defenders ? defenders.map(toDefenderPlayer) : null;
+    const liveKeepers   = keepers   ? keepers.map(toKeeperPlayer)     : null;
+
     return {
       ...base,
       standings:    liveStandings    ?? base.standings,
       topScorers:   liveScorers      ?? base.topScorers,
       topAssisters: liveAssisters    ?? base.topAssisters,
+      topDefenders: liveDefenders    ?? base.topDefenders,
+      topKeepers:   liveKeepers      ?? base.topKeepers,
     };
-  }, [staticData, standings, scorers]);
+  }, [staticData, standings, scorers, defenders, keepers]);
 
   const leaderTeam = standings?.[0]?.team ?? data.standings[0]?.team;
   const topTeamScorer = scorers !== null
@@ -142,7 +221,8 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
     data,
     loadingStandings,
     loadingScorers,
-    isLive: standings !== null || scorers !== null,
+    loadingDefenders,
+    isLive: standings !== null || scorers !== null || defenders !== null || keepers !== null,
     topTeamScorer,
   };
 }
