@@ -14,7 +14,7 @@ import {
   type NormalizedDefender,
   type NormalizedKeeper,
 } from '../services/sportmonksService';
-import { registerSportmonksLogos } from '../services/logoService';
+import { registerSportmonksLogos, normalizeSportmonksVenues } from '../services/logoService';
 import { LEAGUE_DATA, type LeagueData, type Player, type Standing } from '../data/leagueData';
 
 // ── Per-league in-memory cache ────────────────────────────────────────────────
@@ -216,8 +216,10 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
           logoCache.set(leagueId, { data: logos, timestamp: Date.now() });
         }
         if (Object.keys(venueMap).length > 0) {
-          venueCache.set(leagueId, { data: venueMap, timestamp: Date.now() });
-          setVenues(venueMap);
+          // Normalize SM team names to display names so venue lookup works
+          const normalizedVenues = normalizeSportmonksVenues(venueMap);
+          venueCache.set(leagueId, { data: normalizedVenues, timestamp: Date.now() });
+          setVenues(normalizedVenues);
         }
       }).catch(e => console.warn('[useLeagueData] logos/venues failed:', e));
     }
