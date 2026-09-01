@@ -29,6 +29,23 @@ function readEntry(key: string): string | null {
   return entry.url;
 }
 
+// In-memory registry populated from Sportmonks API (via useLeagueData) —
+// higher quality than TheSportsDB so we check this first.
+const smLogoRegistry = new Map<string, string>();
+
+/** Register Sportmonks logos in bulk (called from useLeagueData after fetch). */
+export function registerSportmonksLogos(map: Record<string, string>) {
+  for (const [name, url] of Object.entries(map)) {
+    smLogoRegistry.set(name, url);
+    writeEntry(`team:${name}`, url); // also persist to localStorage cache
+  }
+}
+
+/** Look up a pre-registered Sportmonks logo synchronously (no fetch needed). */
+export function getSportmonksLogo(teamName: string): string | null {
+  return smLogoRegistry.get(teamName) ?? null;
+}
+
 // TheSportsDB league IDs
 export const LEAGUE_IDS: Record<string, string> = {
   'La Liga':    '4335',
@@ -63,6 +80,10 @@ const TEAM_ALIASES: Record<string, string> = {
 const BASE = 'https://www.thesportsdb.com/api/v1/json/3';
 
 export async function fetchTeamLogo(teamName: string): Promise<string | null> {
+  // Check Sportmonks registry first (higher-quality official club crests)
+  const smLogo = smLogoRegistry.get(teamName);
+  if (smLogo) return smLogo;
+
   const searchName = TEAM_ALIASES[teamName] ?? teamName;
   const cacheKey = `team:${searchName}`;
 

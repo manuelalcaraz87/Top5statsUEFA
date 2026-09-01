@@ -75,6 +75,14 @@ async function get<T>(path: string, params?: Record<string, string>): Promise<T>
 interface SmTeam {
   id: number;
   name: string;
+  image_path?: string;
+  venue?: SmVenue;
+}
+
+interface SmVenue {
+  id: number;
+  name?: string;
+  image_path?: string;
 }
 
 interface SmStatDetail {
@@ -121,9 +129,63 @@ export interface NormalizedKeeper {
 }
 
 /**
- * Fetches live defender + goalkeeper stats for a league, aggregated across
- * every team's squad for the current season.
- *
+ * Returns a map of { teamName → logoUrl } for all teams in a league season.
+ * Uses the Sportmonks teams endpoint which includes image_path (club crest).
+ */
+export async function fetchTeamLogoMap(leagueId: string): Promise<Record<string, string>> {
+  const seasonId = SM_SEASON_IDS[leagueId];
+  if (!seasonId) return {};
+  try {
+    const season = await get<{ data: { teams?: SmTeam[] } }>(`seasons/${seasonId}`, {
+      include: 'teams',
+    });
+    const teams = season.data.teams ?? [];
+    const map: Record<string, string> = {};
+    for (const team of teams) {
+      if (team.image_path) map[team.name] = team.image_path;
+    }
+    return map;
+  } catch (e) {
+    console.warn('[sportmonksService] fetchTeamLogoMap failed:', e);
+    return {};
+  }
+}
+
+export interface TeamVenueInfo {
+  venueName: string;
+  venueImage: string;
+}
+
+/**
+ * Returns a map of { teamName → { venueName, venueImage } } for all teams
+ * in a league season. The venue image comes from Sportmonks venue image_path.
+ */
+export async function fetchTeamVenueMap(leagueId: string): Promise<Record<string, TeamVenueInfo>> {
+  const seasonId = SM_SEASON_IDS[leagueId];
+  if (!seasonId) return {};
+  try {
+    const season = await get<{ data: { teams?: SmTeam[] } }>(`seasons/${seasonId}`, {
+      include: 'teams.venue',
+    });
+    const teams = season.data.teams ?? [];
+    const map: Record<string, TeamVenueInfo> = {};
+    for (const team of teams) {
+      if (team.venue?.image_path && team.venue?.name) {
+        map[team.name] = {
+          venueName: team.venue.name,
+          venueImage: team.venue.image_path,
+        };
+      }
+    }
+    return map;
+  } catch (e) {
+    console.warn('[sportmonksService] fetchTeamVenueMap failed:', e);
+    return {};
+  }
+}
+
+
+/**
  * Budget: 1 request for the season's team list + 1 request per team squad
  * (~20 requests for a typical 20-team league). Cached on the backend
  * (shared across all users, see server/index.js), so repeated page loads
