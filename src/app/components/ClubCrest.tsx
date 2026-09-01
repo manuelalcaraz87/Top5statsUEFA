@@ -1,5 +1,6 @@
-import { useId, useState } from 'react';
+import { useId, useState, useEffect } from 'react';
 import { useTeamLogo } from '../hooks/useLogo';
+import { getSportmonksLogo } from '../services/logoService';
 
 // ─── Static CDN map (media.api-sports.io – public image CDN, no auth needed) ──
 
@@ -120,10 +121,21 @@ function ClubCrestSVG({ club, size }: { club: string; size: number }) {
 // ─── Public component – real logo first, SVG fallback ─────────────────────────
 
 export function ClubCrest({ club, size = 32 }: { club: string; size?: number }) {
-  const url = cdnUrl(club);
+  // Sportmonks logos are registered synchronously after fetch — check first
+  const smLogo = getSportmonksLogo(club);
+  const cdnLogo = cdnUrl(club);
   const remoteUrl = useTeamLogo(club);
   const [failed, setFailed] = useState(false);
-  const logoUrl = url || remoteUrl;
+
+  // Re-render when Sportmonks logo becomes available (registry update)
+  const [smLogoUrl, setSmLogoUrl] = useState<string | null>(smLogo);
+  useEffect(() => {
+    // Poll for registry updates (runs once on mount and when club changes)
+    const url = getSportmonksLogo(club);
+    if (url) setSmLogoUrl(url);
+  }, [club]);
+
+  const logoUrl = smLogoUrl || cdnLogo || remoteUrl;
 
   if (logoUrl && !failed) {
     return (
