@@ -886,16 +886,16 @@ function PlayersList({ players, title, subtitle }: { players: Player[]; title: s
   const type = detectPlayerListType(subtitle);
 
   const headerCols = type === 'goals'
-    ? ['Goals', 'Assists', 'G+A']
+    ? ['Goals', 'Assists', 'G+A', 'Goal Contr.', 'Goals Rank']
     : type === 'assists'
-    ? ['Assists', 'Goals', 'G+A']
+    ? ['Assists', 'Goals', 'G+A', 'Goal Contr.', 'Assists Rank']
     : type === 'defender'
     ? ['Rating', 'Clean Sheets', 'Tackles', 'Interceptions', 'Clearances']
     : ['Clean Sheets', 'Rating', 'Saves', 'Save %', 'Minutes'];
 
-  function rowValues(p: Player) {
-    if (type === 'goals')    return [p.value, p.stat2 ?? 0, p.value + (p.stat2 ?? 0)];
-    if (type === 'assists')  return [p.value, p.stat2 ?? 0, p.value + (p.stat2 ?? 0)];
+  function rowValues(p: Player, index: number) {
+    if (type === 'goals')    return [p.value, p.stat2 ?? 0, p.value + (p.stat2 ?? 0), p.value + (p.stat2 ?? 0), `#${index + 1}`];
+    if (type === 'assists')  return [p.value, p.stat2 ?? 0, p.value + (p.stat2 ?? 0), p.value + (p.stat2 ?? 0), `#${index + 1}`];
     if (type === 'defender') return [
       p.value.toFixed(1),
       p.stat2 ?? '—',
@@ -936,7 +936,7 @@ function PlayersList({ players, title, subtitle }: { players: Player[]; title: s
       </div>
 
       {players.map((player, index) => {
-        const vals = rowValues(player);
+        const vals = rowValues(player, index);
         const isTop3 = index < 3;
         return (
           <div

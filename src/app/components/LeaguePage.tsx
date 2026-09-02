@@ -576,16 +576,16 @@ function LeaguePlayersList({ players, title, subtitle, league }: {
   const type = detectType(subtitle);
 
   const headerCols = type === 'goals'
-    ? ['Goals', 'Assists', 'G+A']
+    ? ['Goals', 'Assists', 'G+A', 'Goal Contr.', 'Goals Rank']
     : type === 'assists'
-    ? ['Assists', 'Goals', 'G+A']
+    ? ['Assists', 'Goals', 'G+A', 'Goal Contr.', 'Assists Rank']
     : type === 'defender'
     ? ['Rating', 'Clean Sheets', 'Tackles', 'Interceptions', 'Clearances']
     : ['Clean Sheets', 'Rating', 'Saves', 'Save %', 'Minutes'];
 
   function rowValues(p: Player) {
-    if (type === 'goals')    return [p.goals, p.assists, p.goals + p.assists];
-    if (type === 'assists')  return [p.assists, p.goals, p.goals + p.assists];
+    if (type === 'goals')    return [p.goals, p.assists, p.goals + p.assists, p.goals + p.assists, `#${p.rank}`];
+    if (type === 'assists')  return [p.assists, p.goals, p.goals + p.assists, p.goals + p.assists, `#${p.rank}`];
     if (type === 'defender') return [
       p.goals.toFixed(1),
       p.assists,

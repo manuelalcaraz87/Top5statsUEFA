@@ -1,6 +1,6 @@
 import { useId, useState, useEffect } from 'react';
 import { useTeamLogo } from '../hooks/useLogo';
-import { getSportmonksLogo, subscribeToLogoUpdates } from '../services/logoService';
+import { getSportmonksLogo, subscribeToLogoUpdates, normalizeSportmonksClubName } from '../services/logoService';
 
 // ─── Static CDN map (media.api-sports.io – public image CDN, no auth needed) ──
 
@@ -42,7 +42,8 @@ const TEAM_IDS: Record<string, number> = {
 };
 
 function cdnUrl(club: string): string | null {
-  const id = TEAM_IDS[club];
+  const key = normalizeSportmonksClubName(club);
+  const id = TEAM_IDS[key] ?? TEAM_IDS[club];
   return id ? `https://media.api-sports.io/football/teams/${id}.png` : null;
 }
 
@@ -101,7 +102,8 @@ const SHIELD = 'M24,2 L44,9 L44,27 Q44,42 24,47 Q4,42 4,27 L4,9 Z';
 function ClubCrestSVG({ club, size }: { club: string; size: number }) {
   const uid = useId().replace(/:/g, '');
   const clipId = `sc${uid}`;
-  const crest = CRESTS[club] || DEFAULT_CREST;
+  const key = normalizeSportmonksClubName(club);
+  const crest = CRESTS[key] || CRESTS[club] || DEFAULT_CREST;
   const border = crest.border || crest.secondary;
   const isLight = crest.textColor === '#FFFFFF' || crest.textColor === 'white';
   const strokeColor = isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.6)';

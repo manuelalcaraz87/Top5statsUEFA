@@ -44,7 +44,7 @@ export function subscribeToLogoUpdates(fn: LogoListener): () => void {
 }
 
 // Sportmonks returns full official club names (e.g. "FC Barcelona", "Real Madrid CF").
-// Normalize them to the short display names used in standings/scorers.
+// Normalize them to the short display names used in lookups/fallbacks.
 const SM_NAME_NORMALIZE: Record<string, string> = {
   // La Liga
   'FC Barcelona':              'Barcelona',
@@ -162,6 +162,10 @@ const SM_NAME_NORMALIZE: Record<string, string> = {
 
 function normalizeSmName(smName: string): string {
   return SM_NAME_NORMALIZE[smName] ?? smName;
+}
+
+export function normalizeSportmonksClubName(name: string): string {
+  return normalizeSmName(name);
 }
 
 /** Register Sportmonks logos in bulk (called from useLeagueData after fetch). */
