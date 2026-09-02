@@ -104,9 +104,9 @@ const TEAM_MAP: Record<string, string> = {
   'Como 1907': 'Como',
   'Monza': 'Monza',
   // Bundesliga
-  'FC Bayern München': 'Bayern',
-  'Bayern München': 'Bayern',
-  'FC Bayern Munich': 'Bayern',
+  'FC Bayern München': 'Bayern Munich',
+  'Bayern München': 'Bayern Munich',
+  'FC Bayern Munich': 'Bayern Munich',
   'Borussia Dortmund': 'Dortmund',
   'Bayer 04 Leverkusen': 'Leverkusen',
   'RB Leipzig': 'RB Leipzig',

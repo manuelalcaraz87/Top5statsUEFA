@@ -16,13 +16,29 @@ const TEAM_IDS: Record<string, number> = {
   'Inter Milan': 505, 'AC Milan': 489, 'Juventus': 496, 'Napoli': 492,
   'Roma': 497, 'Lazio': 487, 'Atalanta': 499, 'Fiorentina': 502,
   // Bundesliga
-  'Bayern': 157, 'Bayern Munich': 157, 'Dortmund': 165, 'Leverkusen': 168,
+  'Bayern Munich': 157, 'Bayern': 157, 'Dortmund': 165, 'Leverkusen': 168,
   'RB Leipzig': 173, 'Frankfurt': 169, 'Stuttgart': 172,
+  'Wolfsburg': 161, 'Gladbach': 163, 'Freiburg': 170, 'Werder Bremen': 162,
+  'Augsburg': 186, 'Bochum': 176, 'Mainz': 164, 'Hoffenheim': 167,
+  'Union Berlin': 182, 'Heidenheim': 674, 'Kiel': 192, 'St. Pauli': 179,
+  // La Liga extra
+  'Athletic Bilbao': 531, 'Girona': 547, 'Getafe': 546, 'Rayo': 728,
+  'Las Palmas': 894, 'Alaves': 542, 'Mallorca': 534, 'Osasuna': 727,
+  'Celta Vigo': 538,
+  // EPL extra
+  'West Ham': 48, 'Brighton': 51, 'Wolves': 39, 'Fulham': 36,
+  'Brentford': 55, 'Crystal Palace': 52, 'Bournemouth': 35, 'Everton': 45,
+  'Nottm Forest': 65, 'Leicester': 46, 'Southampton': 41, 'Ipswich': 57,
+  // Serie A extra
+  'Bologna': 500, 'Torino': 503, 'Udinese': 494, 'Genoa': 495,
+  'Empoli': 511, 'Verona': 504, 'Cagliari': 490, 'Lecce': 867,
+  'Venezia': 517, 'Parma': 498, 'Como': 512, 'Monza': 1579,
   // Ligue 1
   'PSG': 85, 'Lyon': 80, 'Monaco': 91, 'Marseille': 81, 'Lille': 79, 'Nice': 84,
   'Lens': 116, 'Rennes': 111,
-  // Bundesliga extra
-  'Wolfsburg': 161, 'Gladbach': 163,
+  // Ligue 1 extra
+  'Brest': 106, 'Toulouse': 108, 'Strasbourg': 95, 'Nantes': 83,
+  'Reims': 93, 'Le Havre': 1063, 'Montpellier': 82,
 };
 
 function cdnUrl(club: string): string | null {

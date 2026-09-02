@@ -873,47 +873,107 @@ function TeamsList({ teams }: { teams: Team[] }) {
   );
 }
 
+type PlayerListType = 'goals' | 'assists' | 'defender' | 'gk';
+
+function detectPlayerListType(subtitle: string): PlayerListType {
+  if (subtitle.startsWith('Goals'))   return 'goals';
+  if (subtitle.startsWith('Assists')) return 'assists';
+  if (subtitle.startsWith('Rating'))  return 'defender';
+  return 'gk';
+}
+
 function PlayersList({ players, title, subtitle }: { players: Player[]; title: string; subtitle: string }) {
+  const type = detectPlayerListType(subtitle);
+
+  const headerCols = type === 'goals'
+    ? ['Goals', 'Assists', 'G+A']
+    : type === 'assists'
+    ? ['Assists', 'Goals', 'G+A']
+    : type === 'defender'
+    ? ['Rating', 'Clean Sheets', 'Tackles', 'Interceptions', 'Clearances']
+    : ['Clean Sheets', 'Rating', 'Saves', 'Save %', 'Minutes'];
+
+  function rowValues(p: Player) {
+    if (type === 'goals')    return [p.value, p.stat2 ?? 0, p.value + (p.stat2 ?? 0)];
+    if (type === 'assists')  return [p.value, p.stat2 ?? 0, p.value + (p.stat2 ?? 0)];
+    if (type === 'defender') return [
+      p.value.toFixed(1),
+      p.stat2 ?? '—',
+      p.tacklesWon    ?? '—',
+      p.interceptions ?? '—',
+      p.clearances    ?? '—',
+    ];
+    return [
+      p.value,
+      (p.stat2 ?? 0).toFixed(1),
+      p.saves          ?? '—',
+      p.savePercentage ? `${p.savePercentage}%` : '—',
+      p.minutesPlayed  ?? '—',
+    ];
+  }
+
+  const accentFrom   = type === 'goals' ? 'from-green-950/30'  : type === 'assists' ? 'from-purple-950/30' : type === 'defender' ? 'from-orange-950/30' : 'from-indigo-950/30';
+  const accentBorder = type === 'goals' ? 'border-green-900/30' : type === 'assists' ? 'border-purple-900/30' : type === 'defender' ? 'border-orange-900/30' : 'border-indigo-900/30';
+  const accentText   = type === 'goals' ? 'text-green-400'     : type === 'assists' ? 'text-purple-400'     : type === 'defender' ? 'text-orange-400'     : 'text-indigo-400';
+  const primaryCol   = accentText;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-gray-100">{title}</h3>
         <p className="text-sm text-gray-400">{subtitle}</p>
       </div>
 
-      <div className="space-y-3">
-        {players.map((player, index) => (
+      {/* Header row */}
+      <div
+        className={`grid items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-br ${accentFrom} to-[#111] border ${accentBorder} text-xs text-gray-500`}
+        style={{ gridTemplateColumns: `2rem 1fr 2.5rem repeat(${headerCols.length}, 4.5rem)` }}
+      >
+        <span>#</span>
+        <span>Player</span>
+        <span></span>
+        {headerCols.map(h => <span key={h} className={`text-center ${accentText}`}>{h}</span>)}
+      </div>
+
+      {players.map((player, index) => {
+        const vals = rowValues(player);
+        const isTop3 = index < 3;
+        return (
           <div
             key={player.id}
-            className="flex items-center gap-3 p-3 bg-[#1a1a1a] rounded-lg hover:bg-[#222] transition-colors border border-gray-800"
+            className={`grid items-center gap-2 px-3 py-3 rounded-lg border transition-colors
+              ${isTop3
+                ? `bg-gradient-to-br ${accentFrom} to-[#1a1a1a] ${accentBorder} hover:brightness-110`
+                : 'bg-[#1a1a1a] border-gray-800 hover:bg-[#222]'
+              }`}
+            style={{ gridTemplateColumns: `2rem 1fr 2.5rem repeat(${headerCols.length}, 4.5rem)` }}
           >
-            <span className="text-gray-600 text-sm font-bold w-5 text-center flex-shrink-0">{index + 1}</span>
-            <PlayerAvatar name={player.name} teamColor={player.leagueColor} size={36} />
-            <ClubCrest club={player.team} size={28} />
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="flex-1 min-w-0">
-                <p className="text-gray-100 font-medium truncate">{player.name}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <LeagueBadge league={player.league} size={14} />
-                  <p className="text-xs text-gray-500 truncate">{player.team} · {player.league}</p>
+            <span className={`text-sm font-bold text-center ${isTop3 ? accentText : 'text-gray-600'}`}>
+              {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <PlayerAvatar name={player.name} teamColor={player.leagueColor} size={28} />
+                <div className="min-w-0">
+                  <p className="text-gray-100 font-medium text-sm truncate">{player.name}</p>
+                  <div className="flex items-center gap-1">
+                    <LeagueBadge league={player.league} size={12} />
+                    <p className="text-xs text-gray-500 truncate">{player.team}</p>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-6 text-right">
-              <div>
-                <p className="text-gray-100">{player.value}</p>
-                <p className="text-xs text-gray-500">{subtitle.split(' / ')[0]}</p>
-              </div>
-              {player.stat2 !== undefined && (
-                <div>
-                  <p className="text-gray-600">{player.stat2}</p>
-                  <p className="text-xs text-gray-500">{subtitle.split(' / ')[1]}</p>
-                </div>
-              )}
+            <div className="flex justify-center">
+              <ClubCrest club={player.team} size={24} />
             </div>
+            {vals.map((v, i) => (
+              <div key={i} className="text-center">
+                <span className={`text-sm font-semibold ${i === 0 ? primaryCol : 'text-gray-300'}`}>{v}</span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
