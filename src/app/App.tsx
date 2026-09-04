@@ -6,6 +6,9 @@ import { SocialFeed } from './components/SocialFeed';
 import { LeagueBadge } from './components/LeagueBadge';
 import { LeaguePage } from './components/LeaguePage';
 
+const UNDER_CONSTRUCTION_IMAGE =
+  'https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=1800&q=80';
+
 const leagues = [
   {
     id: 'la-liga',
@@ -48,6 +51,38 @@ const leagues = [
 export default function App() {
   const [selectedLeague, setSelectedLeague] = useState(leagues[0]);
   const [activeView, setActiveView] = useState<'home' | 'league'>('home');
+
+  const shouldShowUnderConstruction =
+    import.meta.env.PROD || import.meta.env.VITE_SHOW_UNDER_CONSTRUCTION === 'true';
+
+  if (shouldShowUnderConstruction) {
+    return (
+      <div className="relative min-h-screen overflow-hidden bg-[#0b0f19] text-white">
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-55"
+          style={{ backgroundImage: `url(${UNDER_CONSTRUCTION_IMAGE})` }}
+        />
+        <div className="absolute inset-0 bg-[#070b12]/75" />
+
+        <div className="relative z-10 flex min-h-screen items-center justify-center px-6">
+          <div className="max-w-2xl rounded-3xl border border-white/10 bg-black/35 p-8 text-center shadow-2xl backdrop-blur-sm sm:p-12">
+            <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-[#f4c95d]/40 bg-[#f4c95d]/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.2em] text-[#f4c95d]">
+              <Trophy className="h-4 w-4" />
+              Coming soon
+            </div>
+
+            <h1 className="text-4xl font-black uppercase tracking-tight text-white sm:text-6xl">
+              Under Construction
+            </h1>
+
+            <p className="mt-6 text-base text-slate-200 sm:text-lg">
+              We&apos;re preparing the next matchday experience. Please check back soon.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0d0d0d]">
