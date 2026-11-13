@@ -44,6 +44,19 @@ const leagues = [
   },
 ];
 
+const FOOTER_TEXT =
+  'Top5Stats is an independent statistics site. It is not affiliated with, endorsed by or sponsored by any league, club, player or UEFA. All names are used for identification only. Data: football-data.org, API-Football, Sportmonks.';
+
+function SiteFooter() {
+  return (
+    <footer className="border-t border-gray-800 bg-[#0d0d0d] px-4 py-5 sm:px-6 lg:px-8">
+      <p className="mx-auto max-w-[1800px] text-center text-xs leading-relaxed text-gray-500">
+        {FOOTER_TEXT}
+      </p>
+    </footer>
+  );
+}
+
 export default function App() {
   const [selectedLeague, setSelectedLeague] = useState(leagues[0]);
   const [activeView, setActiveView] = useState<'home' | 'league'>('home');
@@ -59,7 +72,8 @@ export default function App() {
           style={{ background: 'linear-gradient(160deg, #1a1a1a 0%, #0b0f19 55%, #070b12 100%)' }}
         />
 
-        <div className="relative z-10 flex min-h-screen items-center justify-center px-6">
+        <div className="relative z-10 flex min-h-screen flex-col">
+        <div className="flex flex-1 items-center justify-center px-6 py-12">
           <div className="max-w-2xl rounded-3xl border border-white/10 bg-black/35 p-8 text-center shadow-2xl backdrop-blur-sm sm:p-12">
             <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-[#f4c95d]/40 bg-[#f4c95d]/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.2em] text-[#f4c95d]">
               <Trophy className="h-4 w-4" />
@@ -75,6 +89,8 @@ export default function App() {
             </p>
           </div>
         </div>
+        <SiteFooter />
+        </div>
       </div>
     );
   }
@@ -85,7 +101,7 @@ export default function App() {
       <nav className="bg-[#1a1a1a] shadow-lg border-b border-gray-800">
         <div className="max-w-[1800px] mx-auto">
           <div className="flex items-center">
-            {/* Logo */}
+            {/* Site name (Home) */}
             <button
               onClick={() => {
                 setSelectedLeague(leagues[0]);
@@ -98,7 +114,7 @@ export default function App() {
               }`}
             >
               <Trophy className="w-5 h-5 text-white" />
-              <span className="text-white hidden sm:inline">Home</span>
+              <span className="text-white font-semibold">Top5Stats</span>
             </button>
 
             {/* League Tabs */}
@@ -142,6 +158,8 @@ export default function App() {
       ) : (
         <LeaguePage league={selectedLeague} />
       )}
+
+      <SiteFooter />
     </div>
   );
 }
