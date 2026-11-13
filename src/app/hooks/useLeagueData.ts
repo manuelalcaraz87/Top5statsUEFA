@@ -37,7 +37,7 @@ const venueCache     = new Map<string, VenueCache>();
 const STANDINGS_TTL  = 10 * 60_000;  // 10 min
 const SCORERS_TTL    = 30 * 60_000;  // 30 min
 const DEFENDERS_TTL  = 60 * 60_000;  // 1 hour
-const VENUE_TTL      = 24 * 60 * 60_000; // 24 hours — stadium images change rarely
+const VENUE_TTL      = 24 * 60 * 60_000; // 24 hours — stadium names change rarely
 
 // ── Adapters: API → leagueData.ts internal types ─────────────────────────────
 
@@ -87,7 +87,6 @@ function toDefenderPlayer(d: NormalizedDefender): Player {
     team:          d.team,
     goals:         roundRating(d.rating), // Rating (0-10) — see LeaguePlayersList "Rating / Clean Sheets"
     assists:       d.cleanSheets,         // Clean Sheets
-    photo:         d.photo,
     minutesPlayed: d.minutesPlayed,
     tacklesWon:    d.tacklesWon,
     interceptions: d.interceptions,
@@ -102,7 +101,6 @@ function toKeeperPlayer(k: NormalizedKeeper): Player {
     team:           k.team,
     goals:          k.cleanSheets,        // Clean Sheets — see LeaguePlayersList "Clean Sheets / Rating"
     assists:        roundRating(k.rating),// Rating (0-10)
-    photo:          k.photo,
     minutesPlayed:  k.minutesPlayed,
     saves:          k.saves,
     goalsConceded:  k.goalsConceded,
@@ -251,11 +249,7 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
       topKeepers:      liveKeepers    ?? base.topKeepers,
       currentMatchday: standings?.currentMatchday ?? base.currentMatchday,
       stats:           liveStats      ?? base.stats,
-      // Stadium: use leader team's venue if available from Sportmonks
-      stadiumImage: (() => {
-        const leader = (liveStandings ?? base.standings)[0]?.team;
-        return (leader && venues?.[leader]?.venueImage) || base.stadiumImage;
-      })(),
+      // Stadium name: use leader team's venue if available from Sportmonks
       stadiumName: (() => {
         const leader = (liveStandings ?? base.standings)[0]?.team;
         return (leader && venues?.[leader]?.venueName) || base.stadiumName;

@@ -6,9 +6,6 @@ import { SocialFeed } from './components/SocialFeed';
 import { LeagueBadge } from './components/LeagueBadge';
 import { LeaguePage } from './components/LeaguePage';
 
-const UNDER_CONSTRUCTION_IMAGE =
-  'https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=1800&q=80';
-
 const leagues = [
   {
     id: 'la-liga',
@@ -59,10 +56,9 @@ export default function App() {
     return (
       <div className="relative min-h-screen overflow-hidden bg-[#0b0f19] text-white">
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-55"
-          style={{ backgroundImage: `url(${UNDER_CONSTRUCTION_IMAGE})` }}
+          className="absolute inset-0"
+          style={{ background: 'linear-gradient(160deg, #1a1a1a 0%, #0b0f19 55%, #070b12 100%)' }}
         />
-        <div className="absolute inset-0 bg-[#070b12]/75" />
 
         <div className="relative z-10 flex min-h-screen items-center justify-center px-6">
           <div className="max-w-2xl rounded-3xl border border-white/10 bg-black/35 p-8 text-center shadow-2xl backdrop-blur-sm sm:p-12">

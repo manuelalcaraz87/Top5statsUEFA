@@ -25,7 +25,6 @@ export interface Player {
   // Optional richer fields, populated only for live defender/goalkeeper
   // stats (Sportmonks — see sportmonksService.ts). Absent for static
   // fallback data and for goals/assists leaderboards.
-  photo?: string;
   minutesPlayed?: number;
   tacklesWon?: number;
   interceptions?: number;
@@ -55,7 +54,6 @@ export interface LeagueStats {
 }
 
 export interface LeagueData {
-  stadiumImage: string;
   stadiumName: string;
   totalClubs: number;
   currentMatchday: number;
@@ -71,7 +69,6 @@ export interface LeagueData {
 
 export const LEAGUE_DATA: Record<string, LeagueData> = {
   'la-liga': {
-    stadiumImage: 'https://images.unsplash.com/photo-1522778034537-20a2486be803?w=1400&q=80&fit=crop&auto=format',
     stadiumName: 'Santiago Bernabéu',
     totalClubs: 20,
     currentMatchday: 17,
@@ -124,7 +121,6 @@ export const LEAGUE_DATA: Record<string, LeagueData> = {
   },
 
   'epl': {
-    stadiumImage: 'https://images.unsplash.com/photo-1623793478409-50c0c0478d26?w=1400&q=80&fit=crop&auto=format',
     stadiumName: 'Anfield',
     totalClubs: 20,
     currentMatchday: 19,
@@ -177,7 +173,6 @@ export const LEAGUE_DATA: Record<string, LeagueData> = {
   },
 
   'serie-a': {
-    stadiumImage: 'https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?w=1400&q=80&fit=crop&auto=format',
     stadiumName: 'San Siro',
     totalClubs: 20,
     currentMatchday: 17,
@@ -230,7 +225,6 @@ export const LEAGUE_DATA: Record<string, LeagueData> = {
   },
 
   'bundesliga': {
-    stadiumImage: 'https://images.unsplash.com/photo-1573559055341-51c1ced2b864?w=1400&q=80&fit=crop&auto=format',
     stadiumName: 'Allianz Arena',
     totalClubs: 18,
     currentMatchday: 17,
@@ -283,7 +277,6 @@ export const LEAGUE_DATA: Record<string, LeagueData> = {
   },
 
   'ligue-1': {
-    stadiumImage: 'https://images.unsplash.com/photo-1676746610993-fa0c050d1f6d?w=1400&q=80&fit=crop&auto=format',
     stadiumName: 'Parc des Princes',
     totalClubs: 18,
     currentMatchday: 15,
@@ -336,7 +329,6 @@ export const LEAGUE_DATA: Record<string, LeagueData> = {
   },
 
   'ucl': {
-    stadiumImage: 'https://images.unsplash.com/photo-1679391029864-d46f366a456b?w=1400&q=80&fit=crop&auto=format',
     stadiumName: 'Wembley Stadium',
     totalClubs: 36,
     currentMatchday: 6,

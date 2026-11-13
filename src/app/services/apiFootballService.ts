@@ -1,5 +1,5 @@
 // api-football.com v3 — secondary/supplementary source
-// Free tier: ~100 requests/day. Used sparingly: live fixtures + player photos.
+// Free tier: ~100 requests/day. Used sparingly: live fixtures.
 //
 // Using backend proxy server to handle CORS and keep tokens secure.
 // The proxy server routes requests to the real API with proper authentication.
@@ -50,7 +50,6 @@ async function get<T>(path: string, params?: Record<string, string>): Promise<T>
 export interface AFScorer {
   rank: number;
   name: string;
-  photo: string;
   team: string;
   goals: number;
   assists: number;
@@ -58,7 +57,7 @@ export interface AFScorer {
 }
 
 /**
- * Top scorers from api-football — richer than FD (includes photos).
+ * Top scorers from api-football — includes appearances.
  * Budget: 1 req per league page load, cached for 1 hour on the backend.
  */
 export async function fetchTopScorersAF(leagueId: string, limit = 10): Promise<AFScorer[]> {
@@ -67,7 +66,7 @@ export async function fetchTopScorersAF(leagueId: string, limit = 10): Promise<A
     if (!lid) return [];
 
     type RawEntry = {
-      player: { name: string; photo: string };
+      player: { name: string };
       statistics: { team: { name: string }; goals: { total: number; assists: number }; games: { appearences: number } }[];
     };
 
@@ -84,7 +83,6 @@ export async function fetchTopScorersAF(leagueId: string, limit = 10): Promise<A
       return {
         rank:        i + 1,
         name:        e.player.name,
-        photo:       e.player.photo,
         team:        s?.team?.name ?? '',
         goals:       s?.goals?.total ?? 0,
         assists:     s?.goals?.assists ?? 0,

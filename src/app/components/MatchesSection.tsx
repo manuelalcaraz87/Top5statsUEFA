@@ -5,16 +5,7 @@ import { useMatches } from '../hooks/useMatches';
 import type { NormalizedMatch } from '../services/footballDataService';
 // v2 – stable hook order
 
-// ── Static images and config ───────────────────────────────────────────────────
-
-const STADIUM_IMAGES: Record<string, string> = {
-  'La Liga':    'https://images.unsplash.com/photo-1522778034537-20a2486be803?w=600&q=75&fit=crop&auto=format',
-  'EPL':        'https://images.unsplash.com/photo-1623793478409-50c0c0478d26?w=600&q=75&fit=crop&auto=format',
-  'Serie A':    'https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?w=600&q=75&fit=crop&auto=format',
-  'Bundesliga': 'https://images.unsplash.com/photo-1573559055341-51c1ced2b864?w=600&q=75&fit=crop&auto=format',
-  'Ligue 1':    'https://images.unsplash.com/photo-1676746610993-fa0c050d1f6d?w=600&q=75&fit=crop&auto=format',
-  'UCL':        'https://images.unsplash.com/photo-1679391029864-d46f366a456b?w=600&q=75&fit=crop&auto=format',
-};
+// ── Static config ───────────────────────────────────────────────────
 
 // League display order
 const LEAGUE_ORDER = ['La Liga', 'EPL', 'Serie A', 'Bundesliga', 'Ligue 1', 'UCL'];
@@ -151,12 +142,8 @@ export function MatchesSection({ selectedLeague }: MatchesSectionProps) {
                 className="rounded-lg flex-shrink-0 overflow-hidden border border-[#2a2a2a]"
                 style={{ width: '530px' }}
               >
-                {/* Stadium image header */}
-                <div className="relative h-14 overflow-hidden">
-                  {STADIUM_IMAGES[leagueName] && (
-                    <img src={STADIUM_IMAGES[leagueName]} alt={leagueName} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-                  )}
-                  <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.45) 60%, rgba(0,0,0,0.2) 100%)' }} />
+                {/* League header */}
+                <div className="relative h-14 overflow-hidden" style={{ background: 'linear-gradient(to right, #1a1a1a 0%, #141414 55%, #0d0d0d 100%)' }}>
                   <div className="relative z-10 flex items-center justify-between h-full px-3">
                     <div className="flex items-center gap-2.5">
                       <LeagueBadge league={leagueName} size={32} />

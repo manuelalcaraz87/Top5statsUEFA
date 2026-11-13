@@ -81,9 +81,7 @@ function LeagueMatchStrip({
     <div className="bg-[#0d0d0d] border-b border-gray-900">
       <div className="max-w-[1800px] mx-auto">
         {/* Stadium header */}
-        <div className="relative h-14 overflow-hidden flex items-center px-4 sm:px-6 lg:px-8">
-          <img src={data.stadiumImage} alt="" className="absolute inset-0 w-full h-full object-cover object-top" />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 100%)' }} />
+        <div className="relative h-14 overflow-hidden flex items-center px-4 sm:px-6 lg:px-8" style={{ background: 'linear-gradient(to right, #1a1a1a 0%, #141414 55%, #0d0d0d 100%)' }}>
           <div className="relative z-10 flex items-center gap-3">
             <LeagueBadge league={league.name} size={32} />
             <span className="text-white font-bold text-sm">{league.name}</span>
@@ -144,9 +142,7 @@ function LeagueTop5Overview({ data, league, topTeamScorer }: { data: LeagueData;
       {/* ── Leader hero ── */}
       {leader && (
         <div className="space-y-4">
-          <div className="relative rounded-xl overflow-hidden" style={{ minHeight: 120 }}>
-            <img src={data.stadiumImage} alt={data.stadiumName} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-transparent" />
+          <div className="relative rounded-xl overflow-hidden" style={{ minHeight: 120, background: 'linear-gradient(135deg, #1f1f1f 0%, #141414 55%, #0d0d0d 100%)' }}>
             <div className="relative z-10 p-5 flex flex-wrap items-center gap-4">
               <ClubCrest club={leader.team} size={56} />
               <div>

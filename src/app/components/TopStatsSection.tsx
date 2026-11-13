@@ -5,8 +5,6 @@ import { ClubCrest } from './ClubCrest';
 import { LeagueBadge } from './LeagueBadge';
 import { useLeagueData } from '../hooks/useLeagueData';
 
-const BERNABEU = 'https://images.unsplash.com/photo-1522778034537-20a2486be803?w=800&q=75&fit=crop&auto=format';
-
 function PlayerAvatar({ name, teamColor, size = 40 }: { name: string; teamColor: string; size?: number }) {
   const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   return (
@@ -247,8 +245,6 @@ export function TopStatsSection() {
             keepers={displayKeepers}
             leaderStanding={overallLeaderStanding}
             leaderLeagueColor={overallLeaderLeague?.color ?? '#666'}
-            stadiumImage={overallLeaderLeague?.data.stadiumImage ?? null}
-            stadiumName={overallLeaderLeague?.data.stadiumName ?? null}
           />
         )}
         {activeTab === 'teams' && <TeamsList teams={displayTeams} />}
@@ -269,7 +265,7 @@ export function TopStatsSection() {
   );
 }
 
-function Top5Overview({ teams, scorers, assists, defenders, keepers, leaderStanding, leaderLeagueColor, stadiumImage, stadiumName }: {
+function Top5Overview({ teams, scorers, assists, defenders, keepers, leaderStanding, leaderLeagueColor }: {
   teams: Team[];
   scorers: Player[];
   assists: Player[];
@@ -277,8 +273,6 @@ function Top5Overview({ teams, scorers, assists, defenders, keepers, leaderStand
   keepers: Player[];
   leaderStanding: import('../data/leagueData').Standing | null;
   leaderLeagueColor: string;
-  stadiumImage: string | null;
-  stadiumName: string | null;
 }) {
   const topTeams = teams.length > 0 ? teams : [{ id: 0, name: 'No current data', league: '', leagueColor: '#666', points: 0, wins: 0, draws: 0, losses: 0, gd: 0 }];
   const topScorers = scorers.length > 0 ? scorers : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
@@ -319,15 +313,8 @@ function Top5Overview({ teams, scorers, assists, defenders, keepers, leaderStand
 
       {/* Leading Team Section */}
       <div className="space-y-4">
-        {/* Hero banner with stadium image */}
-        <div className="relative rounded-xl overflow-hidden" style={{ minHeight: 120 }}>
-          <img
-            src={stadiumImage || BERNABEU}
-            alt={stadiumName || 'Stadium'}
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent" />
+        {/* Hero banner */}
+        <div className="relative rounded-xl overflow-hidden" style={{ minHeight: 120, background: 'linear-gradient(135deg, #1f1f1f 0%, #141414 55%, #0d0d0d 100%)' }}>
           <div className="relative z-10 p-5 flex flex-wrap items-center gap-4">
             <ClubCrest club={topTeams[0].name} size={56} />
             <div>
