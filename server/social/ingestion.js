@@ -1,3 +1,4 @@
+// DISABLED: the social feed is turned off pending redesign; server/index.js does not start this ingestion.
 // Ingestion service: periodically pulls posts for all leagues from X.com,
 // scores them with the trending algorithm, and keeps an in-memory cache
 // that the /api/social/* routes serve from (avoiding hitting X's rate

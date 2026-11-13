@@ -3,7 +3,6 @@ import { Trophy, Goal, Users, Shield, Activity, Hand, Wifi, WifiOff } from 'luci
 import { PieChart, Pie, Cell } from 'recharts';
 import { ClubCrest } from './ClubCrest';
 import { LeagueBadge } from './LeagueBadge';
-import { SocialFeed } from './SocialFeed';
 import { MatchCard } from './MatchCard';
 import { LEAGUE_DATA, type LeagueData, type Player, type FormResult } from '../data/leagueData';
 import { useLeagueData } from '../hooks/useLeagueData';
@@ -749,16 +748,9 @@ export function LeaguePage({ league }: { league: League }) {
       {/* ── Match strip ── */}
       <LeagueMatchStrip data={data} league={league} liveMatches={liveLeagueMatches} />
 
-      {/* ── Same 9 + 3 grid as Home ── */}
+      {/* ── Stats, full width like Home (social feed hidden pending redesign) ── */}
       <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-9">
-            <LeagueStatsSection data={data} league={league} isLive={isLive} topTeamScorer={topTeamScorer} />
-          </div>
-          <div className="lg:col-span-3">
-            <SocialFeed selectedLeague={league} />
-          </div>
-        </div>
+        <LeagueStatsSection data={data} league={league} isLive={isLive} topTeamScorer={topTeamScorer} />
       </div>
     </div>
   );

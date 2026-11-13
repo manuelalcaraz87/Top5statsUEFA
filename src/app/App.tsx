@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Trophy } from 'lucide-react';
 import { MatchesSection } from './components/MatchesSection';
 import { TopStatsSection } from './components/TopStatsSection';
-import { SocialFeed } from './components/SocialFeed';
 import { LeagueBadge } from './components/LeagueBadge';
 import { LeaguePage } from './components/LeaguePage';
 
@@ -135,16 +134,9 @@ export default function App() {
           {/* Matches Section - Full Width */}
           <MatchesSection selectedLeague={selectedLeague} />
 
-          {/* Main Stats + Social Sidebar */}
+          {/* Main Stats (social feed hidden pending redesign) */}
           <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-9">
-                <TopStatsSection />
-              </div>
-              <div className="lg:col-span-3">
-                <SocialFeed selectedLeague={selectedLeague} />
-              </div>
-            </div>
+            <TopStatsSection />
           </div>
         </>
       ) : (
