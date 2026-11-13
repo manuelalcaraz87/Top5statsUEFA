@@ -1,249 +1,57 @@
+# Top5Stats
 
-# Sports Statistics Website
+Top5Stats is an independent football statistics site. It shows the top 5 teams, goal scorers, assist providers, defenders and goalkeepers for the five biggest European leagues (La Liga, Premier League, Serie A, Bundesliga, Ligue 1) and the Champions League, and lets you compare the leagues side by side.
 
-This is a code bundle for Sports Statistics Website. The original project is available at https://www.figma.com/design/KZyUanxPxiTSU76oZ8sfFx/Sports-Statistics-Website.
+Top5Stats is not affiliated with, endorsed by or sponsored by any league, club, player or UEFA. Club, league and player names are used for identification only.
 
-## Prerequisites
+Data comes from [football-data.org](https://www.football-data.org/), [API-Football](https://www.api-football.com/) and [Sportmonks](https://www.sportmonks.com/).
 
-- Node.js (v18 or higher)
-- pnpm or npm
-- API tokens for:
-  - Football Data API (get one at https://www.football-data.org/client/register)
-  - API Football (get one at https://rapidapi.com/api-sports/api/api-football)
-  - X.com (Twitter) API v2 (get one at https://developer.twitter.com/en/portal/dashboard) — optional, powers the Social Feed / Trending section
+## What's in this project
 
-## Setup
+- **The website** (`src/app`): React, TypeScript, Vite and Tailwind.
+- **A small server** (`server/`): passes requests to the data providers so the API keys stay private.
 
-### 1. Frontend Setup
+## Running it on your computer
 
-Copy the environment template and add your tokens:
+You need [Node.js](https://nodejs.org/) 18 or newer and [pnpm](https://pnpm.io/).
 
-```bash
-cp .env.example .env.local
-```
+1. **Install the website's packages** (in the project folder):
 
-Edit `.env.local` and add your API tokens:
-
-```
-VITE_FD_TOKEN=your_football_data_token
-VITE_AF_TOKEN=your_api_football_token
-VITE_API_PROXY_URL=http://localhost:3001
-```
-
-Install dependencies:
-
-```bash
-npm install
-# or
-pnpm install
-```
-
-### 2. Backend Proxy Server Setup
-
-The backend proxy server keeps API tokens secure and handles CORS requests.
-
-Navigate to the server directory:
-
-```bash
-cd server
-```
-
-Copy the environment template:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and add your API tokens:
-
-```
-PORT=3001
-NODE_ENV=development
-FD_TOKEN=your_football_data_token
-AF_TOKEN=your_api_football_token
-CORS_ORIGIN=http://localhost:5173
-CACHE_TTL_MINUTES=60
-X_BEARER_TOKEN=your_x_api_bearer_token
-SOCIAL_REFRESH_MINUTES=5
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-## Running the Application
-
-### Development Mode
-
-**Terminal 1: Start the backend proxy server**
-
-```bash
-cd server
-npm run dev
-# or
-npm start
-```
-
-The server will run on `http://localhost:3001`
-
-**Terminal 2: Start the frontend development server**
-
-```bash
-npm run dev
-```
-
-The frontend will run on `http://localhost:5173`
-
-## Security Features
-
-✅ **Environment Variables**: All API tokens are stored in `.env.local` and `.env` files, which are never committed to the repository (see `.gitignore`)
-
-✅ **Backend Proxy**: API requests route through a secure backend server instead of direct client-to-API calls
-
-✅ **CORS Handling**: The backend server handles CORS properly without relying on third-party proxies
-
-✅ **Caching**: Built-in server-side caching reduces API calls and improves performance
-
-✅ **Error Handling**: Comprehensive error handling with fallback mechanisms
-
-## Environment Variables
-
-### Frontend (.env.local)
-
-- `VITE_FD_TOKEN`: Football Data API token
-- `VITE_AF_TOKEN`: API Football token
-- `VITE_API_PROXY_URL`: Backend proxy server URL (default: http://localhost:3001)
-- `VITE_DEBUG`: Enable debug logging (optional)
-
-### Backend (server/.env)
-
-- `PORT`: Server port (default: 3001)
-- `NODE_ENV`: Environment mode (development/production)
-- `FD_TOKEN`: Football Data API token
-- `AF_TOKEN`: API Football token
-- `CORS_ORIGIN`: Frontend URL for CORS
-- `CACHE_TTL_MINUTES`: Cache expiration time in minutes (default: 60)
-- `X_BEARER_TOKEN`: X.com (Twitter) API v2 bearer token used to fetch posts for the Social Feed / Trending section. If omitted, the ingestion service stays disabled and the frontend falls back to static preview content.
-- `SOCIAL_REFRESH_MINUTES`: How often (in minutes) the server polls X.com for new posts (default: 5)
-
-## Social Feed & Trending Algorithm
-
-The Social Feed and Trending sections surface real posts from X.com (Twitter)
-related to each league, sourced from three curated tiers of accounts per
-league (see `server/social/sources.js`):
-
-- **League/club accounts** — official league and top club handles
-- **Players** — star player accounts
-- **Commentators** — trusted journalists/insiders (e.g. transfer reporters)
-
-### How it works
-
-1. `server/social/xClient.js` queries the X API v2 recent-search endpoint,
-   scoped to `from:<handle>` clauses for each league's curated accounts.
-2. `server/social/trending.js` scores every post with a time-decayed,
-   tier-weighted engagement formula:
-
-   ```
-   score = weightedEngagement(likes, retweets, replies, quotes) * tierWeight
-           / (ageInHours + 2) ^ GRAVITY
+   ```bash
+   pnpm install
    ```
 
-   Commentator/insider posts get a higher tier weight since breaking
-   news/transfer posts tend to drive outsized engagement. Retweets/quotes are
-   weighted highest among engagement signals since they best capture spread.
-3. Hashtags across all leagues' ranked posts are aggregated into a single
-   Trending list, ranked by total decayed score and marked "hot" once a tag
-   appears in 3+ recent posts.
-4. `server/social/ingestion.js` runs this pipeline on a timer
-   (`SOCIAL_REFRESH_MINUTES`) and caches the ranked results in memory, served
-   via:
-   - `GET /api/social/feed/:leagueId?limit=20`
-   - `GET /api/social/trending`
-   - `GET /api/social/status` (diagnostics: last refresh time, per-league post counts)
-5. The frontend's `useSocialFeed` hook (`src/app/hooks/useSocialFeed.ts`)
-   fetches and caches this data, and the `SocialFeed` component renders it —
-   falling back to static preview content if the backend has no live data
-   yet (e.g. `X_BEARER_TOKEN` not configured).
+2. **Set up the server.** In the `server` folder, copy `.env.example` to a new file called `.env` and put your API keys in `.env`. Never put real keys in `.env.example`, because that file is shared.
 
-## Production Deployment
+   ```bash
+   cd server
+   cp .env.example .env
+   npm install
+   npm run dev
+   ```
 
-The included GitHub Actions workflow deploys the frontend to GitHub Pages. The
-backend proxy must be deployed separately to a Node-compatible host (such as
-Render, Railway, or Fly.io). Configure a repository variable named
-`VITE_API_PROXY_URL` with that public backend URL before pushing to `main`.
+   The server runs at http://localhost:3001.
 
-For production, ensure:
+3. **Start the website** (in a second terminal, in the project folder):
 
-1. Set `NODE_ENV=production` in the backend
-2. Update `VITE_API_PROXY_URL` to your production backend URL
-3. Set proper `CORS_ORIGIN` to your frontend domain
-4. Use environment secrets management (never commit `.env` files)
-5. Consider implementing rate limiting and monitoring
+   ```bash
+   pnpm dev
+   ```
 
-The backend must listen on the host-provided `PORT` and allow the exact
-frontend origin through `CORS_ORIGIN`.
+   Open http://localhost:5173.
 
-## Project Structure
+## Checking changes
 
-```
-.
-├── src/
-│   ├── app/
-│   │   ├── components/       # React components
-│   │   ├── services/         # API services (footballDataService, apiFootballService)
-│   │   ├── hooks/            # Custom React hooks
-│   │   └── data/             # Static data
-│   ├── styles/               # Global styles
-│   └── main.tsx              # Entry point
-├── server/                    # Backend proxy server
-│   ├── index.js              # Express server
-│   ├── social/                # X.com ingestion & trending algorithm
-│   │   ├── sources.js         # Curated per-league league/player/commentator handles
-│   │   ├── xClient.js         # X.com (Twitter) API v2 client
-│   │   ├── trending.js        # Scoring/ranking algorithm
-│   │   └── ingestion.js       # Scheduled polling + in-memory cache
-│   ├── package.json
-│   └── .env.example
-├── .env.example              # Frontend env template
-└── package.json
+```bash
+pnpm build
 ```
 
-## API Services
+This must finish without errors before a change is merged.
 
-### Football Data Service (`src/app/services/footballDataService.ts`)
+## Publishing
 
-Provides matches, standings, and top scorers data:
+Anything merged into the `main` branch is published automatically to top5stats.com by the GitHub Actions workflow in `.github/workflows/deploy.yml`. The server is hosted separately; its public address is set in the repository variable `VITE_API_PROXY_URL`.
 
-- `fetchMatchWindow()`: Get matches in a rolling window
-- `fetchStandings(leagueId)`: Get league standings
-- `fetchTopScorers(leagueId, limit)`: Get top scorers
+## Licences
 
-### API Football Service (`src/app/services/apiFootballService.ts`)
-
-Provides additional data including player photos:
-
-- `fetchTopScorersAF(leagueId, limit)`: Get top scorers with photos
-- `fetchLiveFixtures()`: Get live match updates
-
-## Troubleshooting
-
-**"Failed to fetch from Football Data API"**
-- Check that the backend server is running on `http://localhost:3001`
-- Verify API tokens are correctly set in `server/.env`
-- Check CORS settings in `server/index.js`
-
-**"Rate limited" error**
-- Wait for the rate limit window to reset (Football Data: 10 req/min)
-- Check server logs for detailed error messages
-- Consider increasing `CACHE_TTL_MINUTES` to reduce API calls
-
-**Connection refused**
-- Ensure frontend and backend are running on correct ports
-- Verify `VITE_API_PROXY_URL` matches your backend URL
-- Check firewall/network settings
-
-## License
-
-See ATTRIBUTIONS.md for third-party licenses
+See `ATTRIBUTIONS.md` for third-party credits.

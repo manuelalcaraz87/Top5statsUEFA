@@ -8,13 +8,12 @@ import {
 } from '../services/footballDataService';
 import {
   fetchDefendersAndKeepers,
-  fetchTeamLogoMap,
   fetchTeamVenueMap,
   type TeamVenueInfo,
   type NormalizedDefender,
   type NormalizedKeeper,
 } from '../services/sportmonksService';
-import { registerSportmonksLogos, normalizeSportmonksVenues } from '../services/logoService';
+import { normalizeSportmonksVenues } from '../services/clubNames';
 import { LEAGUE_DATA, type LeagueData, type Player, type Standing } from '../data/leagueData';
 
 // ── Per-league in-memory cache ────────────────────────────────────────────────
@@ -29,21 +28,16 @@ interface VenueCache {
   data: Record<string, TeamVenueInfo>;
   timestamp: number;
 }
-interface LogoCache {
-  data: Record<string, string>;
-  timestamp: number;
-}
 
 const standingsCache = new Map<string, StandingsCache>();
 const scorersCache   = new Map<string, ScorersCache>();
 const defendersCache = new Map<string, DefendersCache>();
 const venueCache     = new Map<string, VenueCache>();
-const logoCache      = new Map<string, LogoCache>();
 
 const STANDINGS_TTL  = 10 * 60_000;  // 10 min
 const SCORERS_TTL    = 30 * 60_000;  // 30 min
 const DEFENDERS_TTL  = 60 * 60_000;  // 1 hour
-const VENUE_TTL      = 24 * 60 * 60_000; // 24 hours — stadium images change rarely
+const VENUE_TTL      = 24 * 60 * 60_000; // 24 hours — stadium names change rarely
 
 // ── Adapters: API → leagueData.ts internal types ─────────────────────────────
 
@@ -93,7 +87,6 @@ function toDefenderPlayer(d: NormalizedDefender): Player {
     team:          d.team,
     goals:         roundRating(d.rating), // Rating (0-10) — see LeaguePlayersList "Rating / Clean Sheets"
     assists:       d.cleanSheets,         // Clean Sheets
-    photo:         d.photo,
     minutesPlayed: d.minutesPlayed,
     tacklesWon:    d.tacklesWon,
     interceptions: d.interceptions,
@@ -108,7 +101,6 @@ function toKeeperPlayer(k: NormalizedKeeper): Player {
     team:           k.team,
     goals:          k.cleanSheets,        // Clean Sheets — see LeaguePlayersList "Clean Sheets / Rating"
     assists:        roundRating(k.rating),// Rating (0-10)
-    photo:          k.photo,
     minutesPlayed:  k.minutesPlayed,
     saves:          k.saves,
     goalsConceded:  k.goalsConceded,
@@ -200,28 +192,19 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
         .finally(() => setLoadingDef(false));
     }
 
-    // Team logos + venue images from Sportmonks (cached 24h — rarely changes)
+    // Venue info from Sportmonks (cached 24h — rarely changes)
     const cachedVenue = venueCache.get(leagueId);
     if (cachedVenue && Date.now() - cachedVenue.timestamp < VENUE_TTL) {
       setVenues(cachedVenue.data);
     } else {
-      // Fetch logos and venues in parallel; logos are registered globally so
-      // ClubCrest picks them up without re-rendering the entire tree.
-      Promise.all([
-        fetchTeamLogoMap(leagueId),
-        fetchTeamVenueMap(leagueId),
-      ]).then(([logos, venueMap]) => {
-        if (Object.keys(logos).length > 0) {
-          registerSportmonksLogos(logos);
-          logoCache.set(leagueId, { data: logos, timestamp: Date.now() });
-        }
+      fetchTeamVenueMap(leagueId).then(venueMap => {
         if (Object.keys(venueMap).length > 0) {
           // Normalize SM team names to display names so venue lookup works
           const normalizedVenues = normalizeSportmonksVenues(venueMap);
           venueCache.set(leagueId, { data: normalizedVenues, timestamp: Date.now() });
           setVenues(normalizedVenues);
         }
-      }).catch(e => console.warn('[useLeagueData] logos/venues failed:', e));
+      }).catch(e => console.warn('[useLeagueData] venues failed:', e));
     }
   }, [leagueId]);
 
@@ -266,11 +249,7 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
       topKeepers:      liveKeepers    ?? base.topKeepers,
       currentMatchday: standings?.currentMatchday ?? base.currentMatchday,
       stats:           liveStats      ?? base.stats,
-      // Stadium: use leader team's venue if available from Sportmonks
-      stadiumImage: (() => {
-        const leader = (liveStandings ?? base.standings)[0]?.team;
-        return (leader && venues?.[leader]?.venueImage) || base.stadiumImage;
-      })(),
+      // Stadium name: use leader team's venue if available from Sportmonks
       stadiumName: (() => {
         const leader = (liveStandings ?? base.standings)[0]?.team;
         return (leader && venues?.[leader]?.venueName) || base.stadiumName;

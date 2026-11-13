@@ -75,14 +75,12 @@ async function get<T>(path: string, params?: Record<string, string>): Promise<T>
 interface SmTeam {
   id: number;
   name: string;
-  image_path?: string;
   venue?: SmVenue;
 }
 
 interface SmVenue {
   id: number;
   name?: string;
-  image_path?: string;
 }
 
 interface SmStatDetail {
@@ -93,7 +91,7 @@ interface SmStatDetail {
 interface SmSquadEntry {
   player_id: number;
   position_id: number;
-  player?: { display_name?: string; name?: string; image_path?: string };
+  player?: { display_name?: string; name?: string };
   details: SmStatDetail[];
 }
 
@@ -106,7 +104,6 @@ export interface NormalizedDefender {
   rank: number;
   name: string;
   team: string;
-  photo?: string;
   rating: number;
   cleanSheets: number;
   tacklesWon: number;
@@ -119,7 +116,6 @@ export interface NormalizedKeeper {
   rank: number;
   name: string;
   team: string;
-  photo?: string;
   rating: number;
   cleanSheets: number;
   saves: number;
@@ -128,37 +124,13 @@ export interface NormalizedKeeper {
   minutesPlayed: number;
 }
 
-/**
- * Returns a map of { teamName → logoUrl } for all teams in a league season.
- * Uses the Sportmonks teams endpoint which includes image_path (club crest).
- */
-export async function fetchTeamLogoMap(leagueId: string): Promise<Record<string, string>> {
-  const seasonId = SM_SEASON_IDS[leagueId];
-  if (!seasonId) return {};
-  try {
-    const season = await get<{ data: { teams?: SmTeam[] } }>(`seasons/${seasonId}`, {
-      include: 'teams',
-    });
-    const teams = season.data.teams ?? [];
-    const map: Record<string, string> = {};
-    for (const team of teams) {
-      if (team.image_path) map[team.name] = team.image_path;
-    }
-    return map;
-  } catch (e) {
-    console.warn('[sportmonksService] fetchTeamLogoMap failed:', e);
-    return {};
-  }
-}
-
 export interface TeamVenueInfo {
   venueName: string;
-  venueImage: string;
 }
 
 /**
- * Returns a map of { teamName → { venueName, venueImage } } for all teams
- * in a league season. The venue image comes from Sportmonks venue image_path.
+ * Returns a map of { teamName → { venueName } } for all teams in a league
+ * season. Only the stadium name (text) is used; no images.
  */
 export async function fetchTeamVenueMap(leagueId: string): Promise<Record<string, TeamVenueInfo>> {
   const seasonId = SM_SEASON_IDS[leagueId];
@@ -170,10 +142,9 @@ export async function fetchTeamVenueMap(leagueId: string): Promise<Record<string
     const teams = season.data.teams ?? [];
     const map: Record<string, TeamVenueInfo> = {};
     for (const team of teams) {
-      if (team.venue?.image_path && team.venue?.name) {
+      if (team.venue?.name) {
         map[team.name] = {
           venueName: team.venue.name,
-          venueImage: team.venue.image_path,
         };
       }
     }
@@ -225,7 +196,6 @@ export async function fetchDefendersAndKeepers(leagueId: string): Promise<{
       .map(({ entry, teamName }) => ({
         name: entry.player?.display_name ?? entry.player?.name ?? 'Unknown',
         team: teamName,
-        photo: entry.player?.image_path,
         rating: statValue(entry.details, TYPE_RATING, 'average'),
         cleanSheets: statValue(entry.details, TYPE_CLEAN_SHEETS),
         tacklesWon: statValue(entry.details, TYPE_TACKLES),
@@ -253,7 +223,6 @@ export async function fetchDefendersAndKeepers(leagueId: string): Promise<{
         return {
           name: entry.player?.display_name ?? entry.player?.name ?? 'Unknown',
           team: teamName,
-          photo: entry.player?.image_path,
           rating: statValue(entry.details, TYPE_RATING, 'average'),
           cleanSheets: statValue(entry.details, TYPE_CLEAN_SHEETS),
           saves,

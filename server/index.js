@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import {
-  startSocialIngestion,
   getLeagueFeed,
   getTrending,
   getStatus,
@@ -190,5 +189,5 @@ app.listen(PORT, () => {
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
-// Kick off periodic X.com ingestion for the social feed / trending algorithm.
-startSocialIngestion({ intervalMinutes: Number(process.env.SOCIAL_REFRESH_MINUTES) || 5 });
+// Social feed ingestion is disabled pending redesign (see server/social/ingestion.js).
+// It is intentionally not started here, so no X.com requests are made.

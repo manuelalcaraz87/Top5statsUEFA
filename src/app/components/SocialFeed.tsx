@@ -1,6 +1,7 @@
 import { TrendingUp, Heart, MessageCircle, Share2, Repeat2, Flame, ExternalLink } from 'lucide-react';
 import { LeagueBadge } from './LeagueBadge';
 import { useSocialFeed } from '../hooks/useSocialFeed';
+import type { SocialPost } from '../services/socialFeedService';
 
 interface League {
   id: string;
@@ -12,101 +13,6 @@ interface League {
 interface SocialFeedProps {
   selectedLeague: League;
 }
-
-// Fallback content shown while the live X.com feed loads, or if the social
-// ingestion backend is unavailable / not yet configured with an API token.
-const FALLBACK_POSTS = [
-  {
-    id: 1,
-    source: 'X',
-    sourceHandle: '@FabrizioRomano',
-    league: 'La Liga',
-    tag: 'TRANSFER',
-    tagColor: '#f59e0b',
-    title: 'Here We Go',
-    content: 'Real Madrid leading the race for the summer\'s biggest signing. Personal terms agreed. Medical scheduled for next week.',
-    time: '2h',
-    likes: '18.4K',
-    comments: '2.1K',
-    shares: '5.8K',
-    image: 'https://images.unsplash.com/photo-1522778034537-20a2486be803?w=300&q=70&fit=crop&auto=format',
-  },
-  {
-    id: 2,
-    source: 'X',
-    sourceHandle: '@OptaJoe',
-    league: 'EPL',
-    tag: 'STAT',
-    tagColor: '#3b82f6',
-    title: 'Record Breaker',
-    content: '34 – Erling Haaland has now scored 34 goals in his first 34 Premier League appearances. Historic.',
-    time: '4h',
-    likes: '42.1K',
-    comments: '3.7K',
-    shares: '12.3K',
-    image: null,
-  },
-  {
-    id: 3,
-    source: 'Threads',
-    sourceHandle: '@ChampionsLeague',
-    league: 'UCL',
-    tag: 'RESULT',
-    tagColor: '#22c55e',
-    title: 'Champions League Drama',
-    content: 'Incredible comeback! Down 2-0 at half time, they scored 3 in 15 minutes. The Bernabéu magic is real.',
-    time: '6h',
-    likes: '89.2K',
-    comments: '11.4K',
-    shares: '34.6K',
-    image: 'https://images.unsplash.com/photo-1679391029864-d46f366a456b?w=300&q=70&fit=crop&auto=format',
-  },
-  {
-    id: 4,
-    source: 'X',
-    sourceHandle: '@SerieA_EN',
-    league: 'Serie A',
-    tag: 'PREVIEW',
-    tagColor: '#8b5cf6',
-    title: 'Derby della Madonnina',
-    content: 'San Siro set for its biggest night of the season. Inter vs AC Milan – both chasing top spot. Team news dropping now.',
-    time: '8h',
-    likes: '15.6K',
-    comments: '1.9K',
-    shares: '4.2K',
-    image: 'https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?w=300&q=70&fit=crop&auto=format',
-  },
-  {
-    id: 5,
-    source: 'Threads',
-    sourceHandle: '@Bundesliga_EN',
-    league: 'Bundesliga',
-    tag: 'INJURY',
-    tagColor: '#ef4444',
-    title: 'Injury Update',
-    content: 'Bayern confirm their key midfielder will miss the next 4 weeks. Major blow heading into the title run-in.',
-    time: '10h',
-    likes: '8.3K',
-    comments: '944',
-    shares: '2.1K',
-    image: null,
-  },
-  {
-    id: 6,
-    source: 'X',
-    sourceHandle: '@Ligue1_ENG',
-    league: 'Ligue 1',
-    tag: 'HIGHLIGHTS',
-    tagColor: '#06b6d4',
-    title: 'Goal of the Season?',
-    content: 'A 35-yard thunderbolt from the PSG midfielder. Parc des Princes on its feet. Watch it again and again.',
-    time: '12h',
-    likes: '31.7K',
-    comments: '4.2K',
-    shares: '9.8K',
-    image: 'https://images.unsplash.com/photo-1676746610993-fa0c050d1f6d?w=300&q=70&fit=crop&auto=format',
-  },
-];
 
 const FALLBACK_TRENDING = [
   { tag: '#ElClasico',        posts: '124K', hot: true },
@@ -120,7 +26,7 @@ const FALLBACK_TRENDING = [
 export function SocialFeed({ selectedLeague }: SocialFeedProps) {
   const { posts: livePosts, trending: liveTrending, isLive } = useSocialFeed(selectedLeague.id);
 
-  const POSTS = isLive && livePosts ? livePosts : FALLBACK_POSTS;
+  const POSTS: (SocialPost & { title?: string })[] = isLive && livePosts ? livePosts : [];
   const TRENDING = liveTrending && liveTrending.length > 0 ? liveTrending : FALLBACK_TRENDING;
 
   return (
