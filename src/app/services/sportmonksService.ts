@@ -75,7 +75,6 @@ async function get<T>(path: string, params?: Record<string, string>): Promise<T>
 interface SmTeam {
   id: number;
   name: string;
-  image_path?: string;
   venue?: SmVenue;
 }
 
@@ -126,29 +125,6 @@ export interface NormalizedKeeper {
   goalsConceded: number;
   savePercentage: number;
   minutesPlayed: number;
-}
-
-/**
- * Returns a map of { teamName → logoUrl } for all teams in a league season.
- * Uses the Sportmonks teams endpoint which includes image_path (club crest).
- */
-export async function fetchTeamLogoMap(leagueId: string): Promise<Record<string, string>> {
-  const seasonId = SM_SEASON_IDS[leagueId];
-  if (!seasonId) return {};
-  try {
-    const season = await get<{ data: { teams?: SmTeam[] } }>(`seasons/${seasonId}`, {
-      include: 'teams',
-    });
-    const teams = season.data.teams ?? [];
-    const map: Record<string, string> = {};
-    for (const team of teams) {
-      if (team.image_path) map[team.name] = team.image_path;
-    }
-    return map;
-  } catch (e) {
-    console.warn('[sportmonksService] fetchTeamLogoMap failed:', e);
-    return {};
-  }
 }
 
 export interface TeamVenueInfo {
