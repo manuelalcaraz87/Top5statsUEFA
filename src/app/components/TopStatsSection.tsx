@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Trophy, Goal, Users, Shield, Activity, Hand } from 'lucide-react';
-import { useTop5Data } from './top5/top5Data';
+import { useTop5Data, type Top5League } from './top5/top5Data';
 import { Top5Tab } from './top5/Top5Tab';
 import { ClubsTab } from './top5/ClubsTab';
 import { StrikersTab } from './top5/StrikersTab';
@@ -8,8 +8,9 @@ import { CreatorsTab } from './top5/CreatorsTab';
 import { DefendersTab } from './top5/DefendersTab';
 import { GoalkeepersTab } from './top5/GoalkeepersTab';
 
-// Top 5 area on the home page: the tab bar. Each tab lives in its own file
-// in ./top5/.
+// Top 5 area: the tab bar. Each tab lives in its own file in ./top5/.
+// Home page: no league (five leagues combined). League pages pass their
+// league so every tab shows only that competition.
 
 type TabId = 'top5' | 'clubs' | 'strikers' | 'creators' | 'defenders' | 'goalkeepers';
 
@@ -22,9 +23,9 @@ const TABS: { id: TabId; label: string; icon: typeof Trophy }[] = [
   { id: 'goalkeepers', label: 'Goalkeepers', icon: Hand },
 ];
 
-export function TopStatsSection() {
+export function TopStatsSection({ league }: { league?: Top5League }) {
   const [activeTab, setActiveTab] = useState<TabId>('top5');
-  const data = useTop5Data();
+  const data = useTop5Data(league);
 
   return (
     <div className="bg-[#111111] rounded-lg shadow-xl border border-gray-800 overflow-hidden">
@@ -56,8 +57,8 @@ export function TopStatsSection() {
 
       {/* Content */}
       <div className="p-4 sm:p-6">
-        {activeTab === 'top5'        && <Top5Tab data={data} />}
-        {activeTab === 'clubs'       && <ClubsTab data={data.clubs} />}
+        {activeTab === 'top5'        && <Top5Tab data={data} league={league} />}
+        {activeTab === 'clubs'       && <ClubsTab data={data.clubs} league={league} />}
         {activeTab === 'strikers'    && <StrikersTab data={data.strikers} />}
         {activeTab === 'creators'    && <CreatorsTab data={data.creators} />}
         {activeTab === 'defenders'   && <DefendersTab data={data.defenders} />}

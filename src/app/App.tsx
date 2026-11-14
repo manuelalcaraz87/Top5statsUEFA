@@ -152,7 +152,7 @@ export default function App() {
       </nav>
 
       {/* Match strip: at the top of every page (home and every league page) */}
-      <MatchesSection focusLeague={activeView === 'league' ? selectedLeague.name : undefined} />
+      <MatchesSection onlyLeagueId={activeView === 'league' ? selectedLeague.id : undefined} />
 
       {activeView === 'home' ? (
         /* Main Stats (social feed hidden pending redesign) */

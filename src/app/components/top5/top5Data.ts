@@ -64,6 +64,7 @@ export const CATEGORY_ORDER: CategoryId[] = ['clubs', 'strikers', 'creators', 'd
 
 const TOP_N = 5;
 
+
 /** Remember when real rows last arrived for a category. */
 function useLastUpdated(loading: boolean, entries: Top5Entry[]): Date | null {
   const [time, setTime] = useState<Date | null>(null);
@@ -74,31 +75,60 @@ function useLastUpdated(loading: boolean, entries: Top5Entry[]): Date | null {
   return time;
 }
 
-/** Everything the Top 5 tabs show, across the five domestic leagues. */
-export function useTop5Data(): Record<CategoryId, CategoryData> {
-  const leagues = [
-    { name: 'La Liga',    result: useLeagueData('la-liga') },
-    { name: 'EPL',        result: useLeagueData('epl') },
-    { name: 'Serie A',    result: useLeagueData('serie-a') },
-    { name: 'Bundesliga', result: useLeagueData('bundesliga') },
-    { name: 'Ligue 1',    result: useLeagueData('ligue-1') },
+/** A single competition to show instead of the five leagues combined. */
+export interface Top5League {
+  id: string;
+  /** Short name used by the league text chip, e.g. "EPL" or "UCL". */
+  name: string;
+  /** Full name for headings, e.g. "Premier League". */
+  label?: string;
+}
+
+const FIVE_LEAGUES: Top5League[] = [
+  { id: 'la-liga',    name: 'La Liga' },
+  { id: 'epl',        name: 'EPL' },
+  { id: 'serie-a',    name: 'Serie A' },
+  { id: 'bundesliga', name: 'Bundesliga' },
+  { id: 'ligue-1',    name: 'Ligue 1' },
+];
+
+/**
+ * Everything the Top 5 tabs show. With no league: the five domestic leagues
+ * combined. With a league (including the Champions League): only that
+ * competition, and the Clubs tab lists its full table.
+ */
+export function useTop5Data(league?: Top5League): Record<CategoryId, CategoryData> {
+  // Always five slots so React sees the same hooks every time; unused slots
+  // get an empty id, which makes useLeagueData do nothing.
+  const slots = league ? [league, null, null, null, null] : FIVE_LEAGUES;
+  const results = [
+    useLeagueData(slots[0]?.id ?? ''),
+    useLeagueData(slots[1]?.id ?? ''),
+    useLeagueData(slots[2]?.id ?? ''),
+    useLeagueData(slots[3]?.id ?? ''),
+    useLeagueData(slots[4]?.id ?? ''),
   ];
+  const leagues = slots.flatMap((l, i) => (l ? [{ name: l.name, result: results[i] }] : []));
 
   const loadingStandings = leagues.some(l => l.result.loadingStandings);
   const loadingScorers = leagues.some(l => l.result.loadingScorers);
 
-  // Clubs: ranked by points per game across the five leagues.
-  const clubs: Top5Entry[] = leagues
-    .flatMap(l => l.result.data.standings
+  // Clubs: home page = top five by points per game across the five leagues;
+  // league page = the competition's full table, in table order.
+  const clubRows = league
+    ? leagues.flatMap(l => l.result.data.standings.map(s => ({ league: l.name, s })))
+    : leagues
+      .flatMap(l => l.result.data.standings
         .filter(s => s.played > 0)
         .map(s => ({ league: l.name, s, ppg: s.points / s.played })))
       .sort((a, b) => b.ppg - a.ppg || b.s.gd - a.s.gd)
-      .slice(0, TOP_N)
-      .map(({ league, s }) => ({
-        key: `${league}-${s.team}`,
+      .slice(0, TOP_N);
+  const clubs: Top5Entry[] = clubRows
+      .map(({ league: leagueName, s }) => ({
+        key: `${leagueName}-${s.team}`,
         name: s.team,
         club: s.team,
-        league,
+        league: leagueName,
         top5Score: null,
         opponentsFaced: null,
         stats: [s.points, `${s.won}–${s.drawn}–${s.lost}`, s.gf, s.ga, null],
