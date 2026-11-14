@@ -30,16 +30,23 @@ export function LastUpdated({ time }: { time: Date | null }) {
   );
 }
 
+const PLAYER_INTRO =
+  'We score every player on what he does per 90 minutes, counting actions against tougher opponents and in tougher leagues for more.';
 const PLAYER_SENTENCES = [
-  'We score every player on what he does per 90 minutes, counting actions against tougher opponents and in tougher leagues for more. 50 is an average player in that role and 98 is the best in Europe right now.',
+  `${PLAYER_INTRO} 50 is an average player in that role and 98 is the best in Europe right now.`,
+  "Players need at least half of their team's minutes to be ranked.",
+];
+const PLAYER_SENTENCES_COMPETITION = [
+  `${PLAYER_INTRO} 50 is an average player in this competition and 98 is its best right now. Only matches in this competition count.`,
   "Players need at least half of their team's minutes to be ranked.",
 ];
 
+const CLUB_SENTENCE =
+  'We rank every club on league results, goal difference and recent form, adjusted for league strength and opponents. Champions League results then add up to 3 points or take away up to 1.5.';
+
 const HOW_CALCULATED: Record<CategoryId, { sentences: string[]; weights: [string, string][] }> = {
   clubs: {
-    sentences: [
-      'We rank every club on league results, goal difference and recent form, adjusted for league strength and opponents. Champions League results then add up to 3 points or take away up to 1.5.',
-    ],
+    sentences: [CLUB_SENTENCE],
     weights: [['League points per game', '50%'], ['Goal difference per game', '31%'], ['Last five league matches', '19%']],
   },
   strikers: {
@@ -66,8 +73,21 @@ const HOW_CALCULATED: Record<CategoryId, { sentences: string[]; weights: [string
   },
 };
 
-function HowCalculated({ id }: { id: CategoryId }) {
-  const { sentences, weights } = HOW_CALCULATED[id];
+function HowCalculated({ id, inCompetition }: { id: CategoryId; inCompetition: boolean }) {
+  const { sentences: homeSentences, weights } = HOW_CALCULATED[id];
+  let sentences = homeSentences;
+  if (id === 'clubs') {
+    sentences = [
+      ...homeSentences,
+      inCompetition
+        ? "Scores here use this competition's matches only."
+        : 'Scores here combine league and Champions League matches.',
+    ];
+  } else if (inCompetition) {
+    sentences = PLAYER_SENTENCES_COMPETITION;
+  } else {
+    sentences = [...homeSentences, 'Scores here combine league and Champions League matches.'];
+  }
   return (
     <div className="mt-6 rounded-lg border border-gray-800 bg-[#1a1a1a] p-4">
       <h4 className="mb-2 text-sm font-medium text-gray-200">How this score is calculated</h4>
@@ -149,7 +169,13 @@ export function CategoryTable({ category, data, title }: {
         </div>
       )}
 
-      <HowCalculated id={category.id} />
+      {data.league && category.id !== 'clubs' && entries.length > 0 && (
+        <p className="mt-3 text-xs text-gray-500">
+          A player's score here can differ from the home page, which compares all five leagues.
+        </p>
+      )}
+
+      <HowCalculated id={category.id} inCompetition={Boolean(data.league)} />
     </div>
   );
 }

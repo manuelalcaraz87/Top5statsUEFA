@@ -30,6 +30,8 @@ export interface CategoryData {
   entries: Top5Entry[];
   loading: boolean;
   lastUpdated: Date | null;
+  /** Set on a league or Champions League page; undefined on the home page. */
+  league?: Top5League;
 }
 
 export type CategoryId = 'clubs' | 'strikers' | 'creators' | 'defenders' | 'goalkeepers';
@@ -140,7 +142,7 @@ export function useTop5Data(league?: Top5League): Record<CategoryId, CategoryDat
   }
 
   const clubsLoading = league ? table.loadingStandings || loadingScores : loadingScores;
-  const data = (entries: Top5Entry[], loading: boolean): CategoryData => ({ entries, loading, lastUpdated });
+  const data = (entries: Top5Entry[], loading: boolean): CategoryData => ({ entries, loading, lastUpdated, league });
 
   return {
     clubs:       data(clubs, clubsLoading),
