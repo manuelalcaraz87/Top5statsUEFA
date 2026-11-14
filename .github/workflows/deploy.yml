@@ -43,6 +43,15 @@ jobs:
           VITE_API_PROXY_URL: ${{ vars.VITE_API_PROXY_URL }}
         run: pnpm build
 
+      - name: Fetch latest scores
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/data
+          curl -fsSL --retry 3             -H "Authorization: Bearer ${GH_TOKEN}"             -H "Accept: application/vnd.github.raw"             "https://api.github.com/repos/${{ github.repository }}/contents/scores.json?ref=data"             -o dist/data/scores.json
+          node -e "const s=JSON.parse(require('fs').readFileSync('dist/data/scores.json','utf8')); if(!s.generatedAt||!s.categories){process.exit(1)} console.log('scores.json OK, generated', s.generatedAt)"
+
       - name: Preserve custom domain
         run: |
           if [ -f CNAME ]; then
