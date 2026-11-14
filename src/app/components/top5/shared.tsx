@@ -113,7 +113,7 @@ export function CategoryTable({ category, data, title }: {
   /** Heading above the table; defaults to "Top 5 <category>". */
   title?: string;
 }) {
-  const { entries, loading, lastUpdated } = data;
+  const { entries, loading, lastUpdated, tableAsOf, checkingLive } = data;
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -167,6 +167,13 @@ export function CategoryTable({ category, data, title }: {
             </tbody>
           </table>
         </div>
+      )}
+
+      {tableAsOf && entries.length > 0 && (
+        <p className="mt-3 text-xs text-gray-500">
+          Table as of {tableAsOf.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+          {checkingLive ? '. Checking for live numbers…' : ''}
+        </p>
       )}
 
       {data.league && category.id !== 'clubs' && entries.length > 0 && (

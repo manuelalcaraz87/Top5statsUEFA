@@ -195,6 +195,8 @@ export interface NormalizedScorer {
 
 // ── HTTP helper with error handling ─────────────────────────────────────────
 
+const REQUEST_TIMEOUT_MS = 90_000;
+
 async function get<T>(path: string, params?: Record<string, string>): Promise<T> {
   try {
     if (!API_BASE) {
@@ -208,7 +210,9 @@ async function get<T>(path: string, params?: Record<string, string>): Promise<T>
       });
     }
 
-    const res = await fetch(url.toString());
+    // A request that never answers would never be retried, so give up after
+    // 90 s (the server can take about a minute to wake up and queue calls).
+    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
 
     if (res.status === 429) {
       throw new Error('Rate limited by Football Data API. Please try again later.');
@@ -298,7 +302,7 @@ async function fetchMatchday(code: string, matchday: number): Promise<Normalized
  */
 async function fetchCurrentRound(leagueId: string): Promise<NormalizedMatch[]> {
   const code = LEAGUE_CODES[leagueId];
-  const { currentMatchday } = await fetchStandings(leagueId);
+  const { currentMatchday } = await getStandings(leagueId);
   if (!code || currentMatchday == null) return [];
 
   for (const matchday of [currentMatchday, currentMatchday + 1]) {
@@ -311,12 +315,13 @@ async function fetchCurrentRound(leagueId: string): Promise<NormalizedMatch[]> {
 
 /**
  * Current round for every competition (La Liga, EPL, Serie A, Bundesliga,
- * Ligue 1, UCL). Each competition's matches all come from one matchday.
+ * Ligue 1, UCL), or only for the given competitions (a league page asks for
+ * just its own). Each competition's matches all come from one matchday.
  * A competition that fails to load is left out; throws only if all fail,
  * so callers don't mistake an error for "no matches".
  */
-export async function fetchCurrentMatchdays(): Promise<NormalizedMatch[]> {
-  const results = await Promise.allSettled(Object.keys(LEAGUE_CODES).map(fetchCurrentRound));
+export async function fetchCurrentMatchdays(leagueIds: string[] = Object.keys(LEAGUE_CODES)): Promise<NormalizedMatch[]> {
+  const results = await Promise.allSettled(leagueIds.map(fetchCurrentRound));
   const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
   if (failed.length === results.length) {
     console.error('Failed to fetch current matchdays:', failed[0]?.reason);
@@ -375,6 +380,29 @@ export async function fetchStandings(leagueId: string): Promise<StandingsResult>
     console.error('Failed to fetch standings for league:', leagueId, error);
     throw error;
   }
+}
+
+// One shared standings request per competition: the match strip and the league
+// table both need it, so they share the answer (and a request already on its
+// way) instead of each asking the server. Only successes are remembered.
+const STANDINGS_TTL = 10 * 60_000;
+const standingsCache = new Map<string, { data: StandingsResult; timestamp: number }>();
+const standingsInFlight = new Map<string, Promise<StandingsResult>>();
+
+export function getStandings(leagueId: string): Promise<StandingsResult> {
+  const cached = standingsCache.get(leagueId);
+  if (cached && Date.now() - cached.timestamp < STANDINGS_TTL) return Promise.resolve(cached.data);
+  let pending = standingsInFlight.get(leagueId);
+  if (!pending) {
+    pending = fetchStandings(leagueId)
+      .then(data => {
+        standingsCache.set(leagueId, { data, timestamp: Date.now() });
+        return data;
+      })
+      .finally(() => { standingsInFlight.delete(leagueId); });
+    standingsInFlight.set(leagueId, pending);
+  }
+  return pending;
 }
 
 /** Fetch top scorers for one league (also includes assists). */
