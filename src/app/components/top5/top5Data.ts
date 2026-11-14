@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react';
 import { useLeagueData } from '../../hooks/useLeagueData';
+import {
+  DOMESTIC_LISTS, FILE_CATEGORY, chipForCompetition, clubScoreIndex, findClubScore, listForLeague, scoreList, useScores,
+  type ScoreEntry,
+} from '../../services/scoresService';
 
-// Shared data for the Top 5 area. Real data only (football-data.org);
-// anything that source does not provide is null and shows as "–".
+// Shared data for the Top 5 area. Rankings, Top5 Scores and player stats come
+// from the site's scores file (see scoresService.ts); the full league table
+// comes from football-data.org. Anything missing is null and shows as "–",
+// and an empty list shows "No current data".
 
 export type StatValue = string | number | null;
 
@@ -13,9 +18,9 @@ export interface Top5Entry {
   /** The club shown with the shield (the club itself, or the player's club). */
   club: string;
   league: string;
-  /** Top5 Score: not calculated yet, so always null for now. */
+  /** Top5 Score from the scores file; null when the club has none. */
   top5Score: number | null;
-  /** Opponents faced: not calculated yet, so always null for now. */
+  /** Opponents faced (Easy, Average or Hard); null when there is no score. */
   opponentsFaced: string | null;
   /** Exactly five values, in the order of the category's statLabels. */
   stats: StatValue[];
@@ -48,7 +53,7 @@ export const CATEGORIES: Record<CategoryId, Category> = {
   },
   creators: {
     id: 'creators', label: 'Creators', leaderLabel: 'Creators',
-    statLabels: ['Assists', 'Key passes', 'Pass accuracy', 'Successful dribbles', 'Minutes played'],
+    statLabels: ['Assists', 'Key passes', 'Pass accuracy %', 'Successful dribbles', 'Minutes played'],
   },
   defenders: {
     id: 'defenders', label: 'Defenders', leaderLabel: 'Defenders',
@@ -64,16 +69,14 @@ export const CATEGORY_ORDER: CategoryId[] = ['clubs', 'strikers', 'creators', 'd
 
 const TOP_N = 5;
 
-
-/** Remember when real rows last arrived for a category. */
-function useLastUpdated(loading: boolean, entries: Top5Entry[]): Date | null {
-  const [time, setTime] = useState<Date | null>(null);
-  const signature = entries.map(e => `${e.key}:${e.stats.join('|')}`).join(',');
-  useEffect(() => {
-    if (!loading && signature) setTime(new Date());
-  }, [loading, signature]);
-  return time;
-}
+/** The stat keys in the scores file, in the order of each category's statLabels. */
+const STAT_KEYS: Record<CategoryId, [string, string, string, string, string]> = {
+  clubs:       ['points', 'wonDrawnLost', 'goalsScored', 'goalsConceded', 'cleanSheets'],
+  strikers:    ['goals', 'minutesPerGoal', 'shotsOnTarget', 'assists', 'minutesPlayed'],
+  creators:    ['assists', 'keyPasses', 'passAccuracyPct', 'successfulDribbles', 'minutesPlayed'],
+  defenders:   ['tackles', 'interceptions', 'duelsWonPct', 'blocks', 'teamCleanSheets'],
+  goalkeepers: ['saves', 'savePct', 'cleanSheets', 'goalsConcededPerMatch', 'penaltiesSaved'],
+};
 
 /** A single competition to show instead of the five leagues combined. */
 export interface Top5League {
@@ -84,93 +87,66 @@ export interface Top5League {
   label?: string;
 }
 
-const FIVE_LEAGUES: Top5League[] = [
-  { id: 'la-liga',    name: 'La Liga' },
-  { id: 'epl',        name: 'EPL' },
-  { id: 'serie-a',    name: 'Serie A' },
-  { id: 'bundesliga', name: 'Bundesliga' },
-  { id: 'ligue-1',    name: 'Ligue 1' },
-];
+function entryFromFile(id: CategoryId, e: ScoreEntry, listKey: string): Top5Entry {
+  return {
+    key: `${listKey}-${id}-${e.rank}-${e.name}`,
+    name: e.name,
+    club: e.club,
+    league: chipForCompetition(e.competition),
+    top5Score: e.score,
+    opponentsFaced: e.opponentsFaced ?? null,
+    stats: STAT_KEYS[id].map(k => e.stats?.[k] ?? null),
+  };
+}
 
 /**
- * Everything the Top 5 tabs show. With no league: the five domestic leagues
- * combined. With a league (including the Champions League): only that
- * competition, and the Clubs tab lists its full table.
+ * Everything the Top 5 tabs show. Home page (no league): the file's "overall"
+ * lists. League page: that competition's lists, and the Clubs tab lists the
+ * full football-data.org table with each club's Top5 Score added from the file.
  */
 export function useTop5Data(league?: Top5League): Record<CategoryId, CategoryData> {
-  // Always five slots so React sees the same hooks every time; unused slots
-  // get an empty id, which makes useLeagueData do nothing.
-  const slots = league ? [league, null, null, null, null] : FIVE_LEAGUES;
-  const results = [
-    useLeagueData(slots[0]?.id ?? ''),
-    useLeagueData(slots[1]?.id ?? ''),
-    useLeagueData(slots[2]?.id ?? ''),
-    useLeagueData(slots[3]?.id ?? ''),
-    useLeagueData(slots[4]?.id ?? ''),
-  ];
-  const leagues = slots.flatMap((l, i) => (l ? [{ name: l.name, result: results[i] }] : []));
+  const { scores, loading: loadingScores } = useScores();
+  // Only league pages need the football-data.org table. With no league the
+  // hook is given an empty id and does nothing (so its loading flag is ignored).
+  const table = useLeagueData(league?.id ?? '');
 
-  const loadingStandings = leagues.some(l => l.result.loadingStandings);
-  const loadingScorers = leagues.some(l => l.result.loadingScorers);
+  const listKey = listForLeague(league?.id);
+  const generatedAt = scores ? new Date(scores.generatedAt) : null;
+  const lastUpdated = generatedAt && !Number.isNaN(generatedAt.getTime()) ? generatedAt : null;
 
-  // Clubs: home page = top five by points per game across the five leagues;
-  // league page = the competition's full table, in table order.
-  const clubRows = league
-    ? leagues.flatMap(l => l.result.data.standings.map(s => ({ league: l.name, s })))
-    : leagues
-      .flatMap(l => l.result.data.standings
-        .filter(s => s.played > 0)
-        .map(s => ({ league: l.name, s, ppg: s.points / s.played })))
-      .sort((a, b) => b.ppg - a.ppg || b.s.gd - a.s.gd)
-      .slice(0, TOP_N);
-  const clubs: Top5Entry[] = clubRows
-      .map(({ league: leagueName, s }) => ({
-        key: `${leagueName}-${s.team}`,
+  const fromFile = (id: CategoryId): Top5Entry[] =>
+    scoreList(scores, FILE_CATEGORY[id], listKey).slice(0, TOP_N).map(e => entryFromFile(id, e, listKey));
+
+  // Clubs on a league page: the whole table, in table order. The Champions
+  // League table also holds clubs from outside the five leagues; they have no
+  // score, so they are matched against all five leagues and otherwise left blank.
+  let clubs: Top5Entry[];
+  if (league) {
+    const index = clubScoreIndex(scores, league.id === 'ucl' ? DOMESTIC_LISTS : [listKey]);
+    clubs = table.data.standings.map(s => {
+      const hit = findClubScore(index, s.team);
+      return {
+        key: `${league.id}-${s.team}`,
         name: s.team,
         club: s.team,
-        league: leagueName,
-        top5Score: null,
-        opponentsFaced: null,
+        league: league.name,
+        top5Score: hit?.score ?? null,
+        opponentsFaced: hit?.opponentsFaced ?? null,
         stats: [s.points, `${s.won}–${s.drawn}–${s.lost}`, s.gf, s.ga, null],
-      }));
+      };
+    });
+  } else {
+    clubs = fromFile('clubs');
+  }
 
-  // Players from the football-data.org scorers lists (goals and assists only).
-  const players = leagues.flatMap(l =>
-    [...l.result.data.topScorers, ...l.result.data.topAssisters].map(p => ({ ...p, league: l.name })));
-  const uniquePlayers = [...new Map(players.map(p => [`${p.league}-${p.team}-${p.name}`, p])).values()];
-
-  const strikers: Top5Entry[] = [...uniquePlayers]
-    .filter(p => p.goals > 0)
-    .sort((a, b) => b.goals - a.goals || b.assists - a.assists)
-    .slice(0, TOP_N)
-    .map(p => ({
-      key: `${p.league}-${p.team}-${p.name}`,
-      name: p.name, club: p.team, league: p.league,
-      top5Score: null, opponentsFaced: null,
-      stats: [p.goals, null, null, p.assists, null],
-    }));
-
-  const creators: Top5Entry[] = [...uniquePlayers]
-    .filter(p => p.assists > 0)
-    .sort((a, b) => b.assists - a.assists || b.goals - a.goals)
-    .slice(0, TOP_N)
-    .map(p => ({
-      key: `${p.league}-${p.team}-${p.name}`,
-      name: p.name, club: p.team, league: p.league,
-      top5Score: null, opponentsFaced: null,
-      stats: [p.assists, null, null, null, null],
-    }));
-
-  const clubsUpdated = useLastUpdated(loadingStandings, clubs);
-  const strikersUpdated = useLastUpdated(loadingScorers, strikers);
-  const creatorsUpdated = useLastUpdated(loadingScorers, creators);
+  const clubsLoading = league ? table.loadingStandings || loadingScores : loadingScores;
+  const data = (entries: Top5Entry[], loading: boolean): CategoryData => ({ entries, loading, lastUpdated });
 
   return {
-    clubs:       { entries: clubs,    loading: loadingStandings, lastUpdated: clubsUpdated },
-    strikers:    { entries: strikers, loading: loadingScorers,   lastUpdated: strikersUpdated },
-    creators:    { entries: creators, loading: loadingScorers,   lastUpdated: creatorsUpdated },
-    // No free source for these yet: the tabs say "No current data".
-    defenders:   { entries: [], loading: false, lastUpdated: null },
-    goalkeepers: { entries: [], loading: false, lastUpdated: null },
+    clubs:       data(clubs, clubsLoading),
+    strikers:    data(fromFile('strikers'), loadingScores),
+    creators:    data(fromFile('creators'), loadingScores),
+    defenders:   data(fromFile('defenders'), loadingScores),
+    goalkeepers: data(fromFile('goalkeepers'), loadingScores),
   };
 }
