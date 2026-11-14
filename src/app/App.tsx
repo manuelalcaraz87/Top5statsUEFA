@@ -51,7 +51,7 @@ const leagues = [
 ];
 
 const FOOTER_TEXT =
-  'Top5Stats is an independent statistics site. It is not affiliated with, endorsed by or sponsored by any league, club, player or UEFA. All names are used for identification only. Data: football-data.org, API-Football, Sportmonks.';
+  'Top5Stats is an independent statistics site. It is not affiliated with, endorsed by or sponsored by any league, club, player or UEFA. All names are used for identification only. Data: football-data.org, API-Football.';
 
 function SiteFooter() {
   return (

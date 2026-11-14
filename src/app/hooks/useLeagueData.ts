@@ -6,40 +6,23 @@ import {
   type NormalizedScorer,
   type StandingsResult,
 } from '../services/footballDataService';
-import {
-  fetchDefendersAndKeepers,
-  fetchTeamVenueMap,
-  type TeamVenueInfo,
-  type NormalizedDefender,
-  type NormalizedKeeper,
-} from '../services/sportmonksService';
-import { normalizeSportmonksVenues } from '../services/clubNames';
-import { LEAGUE_DATA, type LeagueData, type Player, type Standing } from '../data/leagueData';
+import { EMPTY_LEAGUE_DATA, type LeagueData, type Player, type Standing } from '../data/leagueData';
+
+// Live data only (football-data.org). When a request fails or returns
+// nothing, the matching list stays empty and the UI shows "No current data".
 
 // ── Per-league in-memory cache ────────────────────────────────────────────────
 
 interface StandingsCache { data: StandingsResult; timestamp: number }
-interface ScorersCache   { data: NormalizedScorer[];   timestamp: number }
-interface DefendersCache {
-  data: { defenders: NormalizedDefender[]; keepers: NormalizedKeeper[] };
-  timestamp: number;
-}
-interface VenueCache {
-  data: Record<string, TeamVenueInfo>;
-  timestamp: number;
-}
+interface ScorersCache   { data: NormalizedScorer[]; timestamp: number }
 
 const standingsCache = new Map<string, StandingsCache>();
 const scorersCache   = new Map<string, ScorersCache>();
-const defendersCache = new Map<string, DefendersCache>();
-const venueCache     = new Map<string, VenueCache>();
 
-const STANDINGS_TTL  = 10 * 60_000;  // 10 min
-const SCORERS_TTL    = 30 * 60_000;  // 30 min
-const DEFENDERS_TTL  = 60 * 60_000;  // 1 hour
-const VENUE_TTL      = 24 * 60 * 60_000; // 24 hours — stadium names change rarely
+const STANDINGS_TTL = 10 * 60_000; // 10 min
+const SCORERS_TTL   = 30 * 60_000; // 30 min
 
-// ── Adapters: API → leagueData.ts internal types ─────────────────────────────
+// ── Adapters: API → leagueData.ts types ──────────────────────────────────────
 
 function toStanding(s: NormalizedStanding): Standing {
   const zone: Standing['zone'] =
@@ -75,75 +58,30 @@ function toScorer(s: NormalizedScorer): Player {
   };
 }
 
-/** Round a 0-10 rating to 1 decimal for clean display everywhere it's rendered. */
-function roundRating(rating: number): number {
-  return Math.round(rating * 10) / 10;
-}
-
-function toDefenderPlayer(d: NormalizedDefender): Player {
-  return {
-    rank:          d.rank,
-    name:          d.name,
-    team:          d.team,
-    goals:         roundRating(d.rating), // Rating (0-10) — see LeaguePlayersList "Rating / Clean Sheets"
-    assists:       d.cleanSheets,         // Clean Sheets
-    minutesPlayed: d.minutesPlayed,
-    tacklesWon:    d.tacklesWon,
-    interceptions: d.interceptions,
-    clearances:    d.clearances,
-  };
-}
-
-function toKeeperPlayer(k: NormalizedKeeper): Player {
-  return {
-    rank:           k.rank,
-    name:           k.name,
-    team:           k.team,
-    goals:          k.cleanSheets,        // Clean Sheets — see LeaguePlayersList "Clean Sheets / Rating"
-    assists:        roundRating(k.rating),// Rating (0-10)
-    minutesPlayed:  k.minutesPlayed,
-    saves:          k.saves,
-    goalsConceded:  k.goalsConceded,
-    savePercentage: k.savePercentage,
-  };
-}
-
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export interface UseLeagueDataResult {
-  /** Merged LeagueData: live standings/scorers/defenders/keepers overlaid on static fallback */
   data: LeagueData;
   loadingStandings: boolean;
   loadingScorers: boolean;
-  loadingDefenders: boolean;
   isLive: boolean;
+  /** Top scorer from the league leader's club, if live data has one. */
   topTeamScorer: Player | null;
 }
 
 export function useLeagueData(leagueId: string): UseLeagueDataResult {
-  const staticData = LEAGUE_DATA[leagueId] as LeagueData | undefined;
-
-  const [standings, setStandings]           = useState<StandingsResult | null>(null);
-  const [scorers,   setScorers]             = useState<NormalizedScorer[]   | null>(null);
-  const [defenders, setDefenders]           = useState<NormalizedDefender[] | null>(null);
-  const [keepers,   setKeepers]             = useState<NormalizedKeeper[]   | null>(null);
-  const [venues,    setVenues]              = useState<Record<string, TeamVenueInfo> | null>(null);
-  const [loadingStandings, setLoadingSt]    = useState(true);
-  const [loadingScorers,   setLoadingSc]    = useState(true);
-  const [loadingDefenders, setLoadingDef]   = useState(true);
+  const [standings, setStandings]        = useState<StandingsResult | null>(null);
+  const [scorers,   setScorers]          = useState<NormalizedScorer[] | null>(null);
+  const [loadingStandings, setLoadingSt] = useState(true);
+  const [loadingScorers,   setLoadingSc] = useState(true);
 
   useEffect(() => {
     if (!leagueId) return;
     setLoadingSt(true);
     setLoadingSc(true);
-    setLoadingDef(true);
     setStandings(null);
     setScorers(null);
-    setDefenders(null);
-    setKeepers(null);
-    setVenues(null);
 
-    // Standings (also returns currentMatchday)
     const cachedSt = standingsCache.get(leagueId);
     if (cachedSt && Date.now() - cachedSt.timestamp < STANDINGS_TTL) {
       setStandings(cachedSt.data);
@@ -158,7 +96,6 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
         .finally(() => setLoadingSt(false));
     }
 
-    // Scorers
     const cachedSc = scorersCache.get(leagueId);
     if (cachedSc && Date.now() - cachedSc.timestamp < SCORERS_TTL) {
       setScorers(cachedSc.data);
@@ -172,102 +109,47 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
         .catch(e => console.warn('[useLeagueData] scorers failed:', e))
         .finally(() => setLoadingSc(false));
     }
-
-    // Defenders + goalkeepers (Sportmonks — not available for every league, see sportmonksService.ts)
-    const cachedDef = defendersCache.get(leagueId);
-    if (cachedDef && Date.now() - cachedDef.timestamp < DEFENDERS_TTL) {
-      setDefenders(cachedDef.data.defenders);
-      setKeepers(cachedDef.data.keepers);
-      setLoadingDef(false);
-    } else {
-      fetchDefendersAndKeepers(leagueId)
-        .then(data => {
-          if (data.defenders.length > 0 || data.keepers.length > 0) {
-            defendersCache.set(leagueId, { data, timestamp: Date.now() });
-            setDefenders(data.defenders);
-            setKeepers(data.keepers);
-          }
-        })
-        .catch(e => console.warn('[useLeagueData] defenders/keepers failed:', e))
-        .finally(() => setLoadingDef(false));
-    }
-
-    // Venue info from Sportmonks (cached 24h — rarely changes)
-    const cachedVenue = venueCache.get(leagueId);
-    if (cachedVenue && Date.now() - cachedVenue.timestamp < VENUE_TTL) {
-      setVenues(cachedVenue.data);
-    } else {
-      fetchTeamVenueMap(leagueId).then(venueMap => {
-        if (Object.keys(venueMap).length > 0) {
-          // Normalize SM team names to display names so venue lookup works
-          const normalizedVenues = normalizeSportmonksVenues(venueMap);
-          venueCache.set(leagueId, { data: normalizedVenues, timestamp: Date.now() });
-          setVenues(normalizedVenues);
-        }
-      }).catch(e => console.warn('[useLeagueData] venues failed:', e));
-    }
   }, [leagueId]);
 
   const data = useMemo<LeagueData>(() => {
-    const base = staticData ?? LEAGUE_DATA['epl'];
-
-    const liveStandings = standings ? standings.standings.map(toStanding) : null;
+    const liveStandings = standings ? standings.standings.map(toStanding) : [];
 
     // Scorers sorted by goals; assisters derived by re-sorting the same data by assists
-    const liveScorers   = scorers !== null ? scorers.slice(0, 10).map(toScorer) : null;
-    const liveAssisters = scorers !== null
+    const liveScorers   = scorers ? scorers.slice(0, 10).map(toScorer) : [];
+    const liveAssisters = scorers
       ? [...scorers]
         .filter(s => s.assists > 0)
         .sort((a, b) => b.assists - a.assists)
         .map((s, i) => toScorer({ ...s, rank: i + 1 }))
-      : null;
+      : [];
 
-    const liveDefenders = defenders ? defenders.map(toDefenderPlayer) : null;
-    const liveKeepers   = keepers   ? keepers.map(toKeeperPlayer)     : null;
-
-    // Derive live aggregate stats from standings data
-    const liveStandingRows = standings?.standings ?? null;
-    const liveStats = liveStandingRows && liveStandingRows.length > 0 ? (() => {
-      const totalPlayed = liveStandingRows.reduce((s, r) => s + r.played, 0) / 2;
-      const totalGoals  = liveStandingRows.reduce((s, r) => s + r.gf, 0) / 2;
-      const totalHomeWins = liveStandingRows.reduce((s, r) => s + r.won, 0) / 2;
-      return {
-        totalGoals: Math.round(totalGoals),
-        goalsPerGame: totalPlayed > 0 ? Math.round((totalGoals / totalPlayed) * 100) / 100 : base.stats.goalsPerGame,
-        matchesPlayed: Math.round(totalPlayed),
-        homeWinPct: totalPlayed > 0 ? Math.round((totalHomeWins / totalPlayed) * 100) : base.stats.homeWinPct,
-        topVenue: base.stats.topVenue,
-      };
-    })() : null;
+    // Totals derived from the live table (each match counted once)
+    const totalPlayed = liveStandings.reduce((sum, r) => sum + r.played, 0) / 2;
+    const totalGoals  = liveStandings.reduce((sum, r) => sum + r.gf, 0) / 2;
+    const stats = totalPlayed > 0 ? {
+      totalGoals:    Math.round(totalGoals),
+      goalsPerGame:  Math.round((totalGoals / totalPlayed) * 100) / 100,
+      matchesPlayed: Math.round(totalPlayed),
+    } : null;
 
     return {
-      ...base,
-      standings:       liveStandings  ?? base.standings,
-      topScorers:      liveScorers    ?? base.topScorers,
-      topAssisters:    liveAssisters  ?? base.topAssisters,
-      topDefenders:    liveDefenders  ?? base.topDefenders,
-      topKeepers:      liveKeepers    ?? base.topKeepers,
-      currentMatchday: standings?.currentMatchday ?? base.currentMatchday,
-      stats:           liveStats      ?? base.stats,
-      // Stadium name: use leader team's venue if available from Sportmonks
-      stadiumName: (() => {
-        const leader = (liveStandings ?? base.standings)[0]?.team;
-        return (leader && venues?.[leader]?.venueName) || base.stadiumName;
-      })(),
+      ...EMPTY_LEAGUE_DATA,
+      currentMatchday: standings?.currentMatchday ?? null,
+      stats,
+      standings:    liveStandings,
+      topScorers:   liveScorers,
+      topAssisters: liveAssisters,
     };
-  }, [staticData, standings, scorers, defenders, keepers, venues]);
+  }, [standings, scorers]);
 
-  const leaderTeam = standings?.standings?.[0]?.team ?? data.standings[0]?.team;
-  const topTeamScorer = scorers !== null
-    ? (scorers.find(s => s.team === leaderTeam) ? toScorer(scorers.find(s => s.team === leaderTeam)!) : null)
-    : data.topScorers.find(s => s.team === leaderTeam) ?? data.topScorers[0] ?? null;
+  const leaderTeam = data.standings[0]?.team;
+  const leaderScorer = leaderTeam ? scorers?.find(s => s.team === leaderTeam) : undefined;
 
   return {
     data,
     loadingStandings,
     loadingScorers,
-    loadingDefenders,
-    isLive: standings !== null || scorers !== null || defenders !== null || keepers !== null,
-    topTeamScorer,
+    isLive: data.standings.length > 0 || data.topScorers.length > 0,
+    topTeamScorer: leaderScorer ? toScorer(leaderScorer) : null,
   };
 }
