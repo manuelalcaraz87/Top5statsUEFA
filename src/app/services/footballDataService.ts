@@ -279,27 +279,34 @@ function normalizeMatch(m: Record<string, unknown>): NormalizedMatch {
 
 const ALL_CODES = Object.values(LEAGUE_CODES).join(',');
 
+// football-data.org accepts at most a 10-day dateFrom→dateTo range.
+async function fetchMatchesBetween(fromOffsetDays: number, toOffsetDays: number): Promise<NormalizedMatch[]> {
+  const data = await get<{ matches: Record<string, unknown>[] }>(
+    'matches',
+    {
+      dateFrom: isoDate(fromOffsetDays),
+      dateTo: isoDate(toOffsetDays),
+      competitions: ALL_CODES,
+      season: CURRENT_SEASON.toString(),
+    }
+  );
+  return (data.matches ?? []).map(normalizeMatch);
+}
+
 /**
- * Fetch matches in a rolling window covering the nearest match round.
- * Tries today ± 2 days to ensure we always show something even mid-week.
+ * Fetch matches around today: the last 3 days and the next 7. If that window
+ * is empty (e.g. an international break), look at the following 10 days so
+ * the next round still shows. Throws on failure so callers don't mistake an
+ * error for "no matches".
  */
 export async function fetchMatchWindow(): Promise<NormalizedMatch[]> {
   try {
-    const from = isoDate(-3);
-    const to = isoDate(4);
-    const data = await get<{ matches: Record<string, unknown>[] }>(
-      'matches',
-      {
-        dateFrom: from,
-        dateTo: to,
-        competitions: ALL_CODES,
-        season: CURRENT_SEASON.toString(),
-      }
-    );
-    return (data.matches ?? []).map(normalizeMatch);
+    const nearby = await fetchMatchesBetween(-3, 7);
+    if (nearby.length > 0) return nearby;
+    return await fetchMatchesBetween(8, 17);
   } catch (error) {
     console.error('Failed to fetch match window:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -348,8 +355,9 @@ export async function fetchStandings(leagueId: string): Promise<StandingsResult>
 
     return { standings, currentMatchday, totalMatchdays: null };
   } catch (error) {
+    // Re-throw so the caller can retry instead of caching an empty table.
     console.error('Failed to fetch standings for league:', leagueId, error);
-    return { standings: [], currentMatchday: null, totalMatchdays: null };
+    throw error;
   }
 }
 
@@ -376,7 +384,8 @@ export async function fetchTopScorers(leagueId: string, limit = 10): Promise<Nor
       };
     });
   } catch (error) {
+    // Re-throw so the caller can retry instead of caching an empty list.
     console.error('Failed to fetch top scorers for league:', leagueId, error);
-    return [];
+    throw error;
   }
 }

@@ -41,12 +41,67 @@ function setCache(key, data) {
   cache.set(key, { data, timestamp: Date.now() });
 }
 
+// ── football-data.org rate limiting ───────────────────────────────────────────
+// The free plan allows FD_REQUESTS_PER_MINUTE requests per rolling minute.
+// Every upstream call goes through fdQueued(), which waits for a free slot
+// instead of letting football-data.org refuse the request. Identical requests
+// that arrive while one is already in flight share that single call.
+const FD_REQUESTS_PER_MINUTE = Number(process.env.FD_REQUESTS_PER_MINUTE) || 10;
+const FD_WINDOW_MS = 60_000;
+const fdSentAt = [];          // timestamps of recent upstream calls
+let fdQueue = Promise.resolve();
+const fdInFlight = new Map(); // url -> Promise<{ status, data }>
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function waitForFdSlot() {
+  for (;;) {
+    const now = Date.now();
+    while (fdSentAt.length && now - fdSentAt[0] >= FD_WINDOW_MS) fdSentAt.shift();
+    if (fdSentAt.length < FD_REQUESTS_PER_MINUTE) {
+      fdSentAt.push(now);
+      return;
+    }
+    await sleep(fdSentAt[0] + FD_WINDOW_MS - now + 50);
+  }
+}
+
+async function fdFetchOnce(url) {
+  // Queue slots one at a time so concurrent requests never exceed the limit.
+  const slot = fdQueue.then(waitForFdSlot);
+  fdQueue = slot.catch(() => {});
+  await slot;
+  const response = await fetch(url, { headers: { 'X-Auth-Token': process.env.FD_TOKEN } });
+  const data = await response.json().catch(() => null);
+  return { status: response.status, statusText: response.statusText, headers: response.headers, data };
+}
+
+async function fdFetch(url) {
+  let result = await fdFetchOnce(url);
+  if (result.status === 429) {
+    // Our count drifted from football-data.org's (e.g. after a restart):
+    // wait for their counter to reset, then try once more.
+    const resetSeconds = Number(result.headers.get('x-requestcounter-reset')) || 60;
+    console.warn(`[fd] rate limited upstream; retrying in ${resetSeconds}s`);
+    await sleep(resetSeconds * 1000 + 250);
+    result = await fdFetchOnce(url);
+  }
+  return result;
+}
+
+function fdFetchShared(url) {
+  if (!fdInFlight.has(url)) {
+    fdInFlight.set(url, fdFetch(url).finally(() => fdInFlight.delete(url)));
+  }
+  return fdInFlight.get(url);
+}
+
 // Football Data API Proxy
 app.get('/api/fd/*', async (req, res) => {
   try {
     const path = req.params[0];
     const cacheKey = getCacheKey(`fd/${path}`, req.query);
-    
+
     // Check cache first
     const cached = getFromCache(cacheKey);
     if (cached) {
@@ -55,24 +110,19 @@ app.get('/api/fd/*', async (req, res) => {
 
     const queryString = new URLSearchParams(req.query).toString();
     const url = `https://api.football-data.org/v4/${path}${queryString ? '?' + queryString : ''}`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'X-Auth-Token': process.env.FD_TOKEN,
-      },
-    });
 
-    if (response.status === 429) {
+    const { status, statusText, data } = await fdFetchShared(url);
+
+    if (status === 429) {
       return res.status(429).json({ error: 'Rate limited by Football Data API' });
     }
 
-    if (!response.ok) {
-      return res.status(response.status).json({ 
-        error: `Football Data API error: ${response.statusText}` 
+    if (status < 200 || status >= 300) {
+      return res.status(status).json({
+        error: `Football Data API error: ${statusText}`
       });
     }
 
-    const data = await response.json();
     setCache(cacheKey, data);
     res.json(data);
   } catch (error) {
