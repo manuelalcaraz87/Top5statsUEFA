@@ -151,16 +151,14 @@ export default function App() {
         </div>
       </nav>
 
-      {activeView === 'home' ? (
-        <>
-          {/* Matches Section - Full Width */}
-          <MatchesSection selectedLeague={selectedLeague} />
+      {/* Match strip: at the top of every page (home and every league page) */}
+      <MatchesSection focusLeague={activeView === 'league' ? selectedLeague.name : undefined} />
 
-          {/* Main Stats (social feed hidden pending redesign) */}
-          <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <TopStatsSection />
-          </div>
-        </>
+      {activeView === 'home' ? (
+        /* Main Stats (social feed hidden pending redesign) */
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <TopStatsSection />
+        </div>
       ) : (
         <LeaguePage league={selectedLeague} />
       )}
