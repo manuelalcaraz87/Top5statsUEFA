@@ -22,6 +22,9 @@ const scorersCache   = new Map<string, ScorersCache>();
 const STANDINGS_TTL = 10 * 60_000; // 10 min
 const SCORERS_TTL   = 30 * 60_000; // 30 min
 
+const MAX_RETRIES = 3;      // after a failed request
+const RETRY_DELAY = 30_000; // 30 s between retries
+
 // ── Adapters: API → leagueData.ts types ──────────────────────────────────────
 
 function toStanding(s: NormalizedStanding): Standing {
@@ -82,33 +85,53 @@ export function useLeagueData(leagueId: string): UseLeagueDataResult {
     setStandings(null);
     setScorers(null);
 
-    const cachedSt = standingsCache.get(leagueId);
-    if (cachedSt && Date.now() - cachedSt.timestamp < STANDINGS_TTL) {
-      setStandings(cachedSt.data);
-      setLoadingSt(false);
-    } else {
-      fetchStandings(leagueId)
-        .then(data => {
-          standingsCache.set(leagueId, { data, timestamp: Date.now() });
-          setStandings(data);
-        })
-        .catch(e => console.warn('[useLeagueData] standings failed:', e))
-        .finally(() => setLoadingSt(false));
+    // Ignore late answers after the league changes or the page unmounts.
+    let cancelled = false;
+    const retryTimers: ReturnType<typeof setTimeout>[] = [];
+
+    // Only successful answers are cached. A failed request is retried a few
+    // times (the UI keeps saying "Loading…"); after that it shows
+    // "No current data" until the next visit.
+    function load<T>(
+      label: string,
+      cache: Map<string, { data: T; timestamp: number }>,
+      ttl: number,
+      fetcher: () => Promise<T>,
+      setData: (data: T) => void,
+      setLoading: (loading: boolean) => void,
+    ) {
+      const cached = cache.get(leagueId);
+      if (cached && Date.now() - cached.timestamp < ttl) {
+        setData(cached.data);
+        setLoading(false);
+        return;
+      }
+      let retriesLeft = MAX_RETRIES;
+      const attempt = () => {
+        fetcher()
+          .then(data => {
+            if (cancelled) return;
+            cache.set(leagueId, { data, timestamp: Date.now() });
+            setData(data);
+            setLoading(false);
+          })
+          .catch(e => {
+            if (cancelled) return;
+            console.warn(`[useLeagueData] ${label} failed for ${leagueId}${retriesLeft > 0 ? ', retrying' : ''}:`, e);
+            if (retriesLeft-- > 0) retryTimers.push(setTimeout(attempt, RETRY_DELAY));
+            else setLoading(false);
+          });
+      };
+      attempt();
     }
 
-    const cachedSc = scorersCache.get(leagueId);
-    if (cachedSc && Date.now() - cachedSc.timestamp < SCORERS_TTL) {
-      setScorers(cachedSc.data);
-      setLoadingSc(false);
-    } else {
-      fetchTopScorers(leagueId, 100)
-        .then(data => {
-          scorersCache.set(leagueId, { data, timestamp: Date.now() });
-          setScorers(data);
-        })
-        .catch(e => console.warn('[useLeagueData] scorers failed:', e))
-        .finally(() => setLoadingSc(false));
-    }
+    load('standings', standingsCache, STANDINGS_TTL, () => fetchStandings(leagueId), setStandings, setLoadingSt);
+    load('scorers', scorersCache, SCORERS_TTL, () => fetchTopScorers(leagueId, 100), setScorers, setLoadingSc);
+
+    return () => {
+      cancelled = true;
+      retryTimers.forEach(clearTimeout);
+    };
   }, [leagueId]);
 
   const data = useMemo<LeagueData>(() => {

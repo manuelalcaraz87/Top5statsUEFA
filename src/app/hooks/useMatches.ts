@@ -11,11 +11,18 @@ interface Cache {
 
 let _cache: Cache | null = null;
 let _inflight: Promise<void> | null = null;
+let _lastFailed = false; // last request failed: poll again sooner
 
-const LIVE_TTL  = 40_000;
-const IDLE_TTL  = 5 * 60_000;
-const LIVE_POLL = 45_000;
-const IDLE_POLL = 5 * 60_000;
+const LIVE_TTL   = 40_000;
+const IDLE_TTL   = 5 * 60_000;
+const LIVE_POLL  = 45_000;
+const IDLE_POLL  = 5 * 60_000;
+const RETRY_POLL = 30_000;
+
+function nextPollDelay(): number {
+  if (_lastFailed) return RETRY_POLL;
+  return _cache?.hasLive ? LIVE_POLL : IDLE_POLL;
+}
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -51,8 +58,13 @@ export function useMatches() {
       _inflight = fetchMatchWindow()
         .then(data => {
           _cache = { data, timestamp: Date.now(), hasLive: data.some(m => m.status === 'live') };
+          _lastFailed = false;
         })
-        .catch(e => console.warn('[useMatches]', e))
+        .catch(e => {
+          // Keep any earlier real data on screen; just try again sooner.
+          _lastFailed = true;
+          console.warn('[useMatches]', e);
+        })
         .finally(() => { _inflight = null; });
     }
 
@@ -72,7 +84,7 @@ export function useMatches() {
 
     // Adaptive polling: re-evaluates delay after each fetch
     function schedule() {
-      const delay = _cache?.hasLive ? LIVE_POLL : IDLE_POLL;
+      const delay = nextPollDelay();
       timerRef.current = setTimeout(async () => {
         await load();
         schedule();
@@ -87,7 +99,7 @@ export function useMatches() {
     if (timerRef.current) clearTimeout(timerRef.current);
     load(true).then(() => {
       function tick() {
-        const delay = _cache?.hasLive ? LIVE_POLL : IDLE_POLL;
+        const delay = nextPollDelay();
         timerRef.current = setTimeout(async () => { await load(); tick(); }, delay);
       }
       tick();
