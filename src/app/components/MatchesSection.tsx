@@ -129,7 +129,9 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
                   <div className="mb-2 flex items-center gap-2">
                     <LeagueBadge league={leagueName} size={22} />
                     <h3 className="text-xs font-semibold text-gray-200">{leagueName}</h3>
-                    <span className="text-[10px] text-gray-500">{leagueMatches.length}</span>
+                    {leagueMatches[0].matchday != null && (
+                      <span className="text-[10px] text-gray-500">Matchday {leagueMatches[0].matchday}</span>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     {leagueMatches.map(match => (

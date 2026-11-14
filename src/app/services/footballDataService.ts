@@ -167,6 +167,8 @@ export interface NormalizedMatch {
   leagueColor: string;
   leagueId: string;
   utcDate: string;
+  /** Round number within the competition (null for knockout games). */
+  matchday: number | null;
 }
 
 export interface NormalizedStanding {
@@ -225,11 +227,6 @@ async function get<T>(path: string, params?: Record<string, string>): Promise<T>
 
 // ── Date helpers ─────────────────────────────────────────────────────────
 
-function isoDate(offsetDays = 0): string {
-  const d = new Date(Date.now() + offsetDays * 86_400_000);
-  return d.toISOString().split('T')[0];
-}
-
 function formatKickoff(utcDate: string): string {
   return new Date(utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
@@ -272,42 +269,61 @@ function normalizeMatch(m: Record<string, unknown>): NormalizedMatch {
     leagueColor: leagueInfo.color,
     leagueId: leagueInfo.id,
     utcDate: m.utcDate as string,
+    matchday: (m.matchday as number | null) ?? null,
   };
 }
 
 // ── Public API ──────────────────────────────────────────────────────────
 
-const ALL_CODES = Object.values(LEAGUE_CODES).join(',');
+function isToday(utcDate: string): boolean {
+  const d = new Date(utcDate);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}
 
-// football-data.org accepts at most a 10-day dateFrom→dateTo range.
-async function fetchMatchesBetween(fromOffsetDays: number, toOffsetDays: number): Promise<NormalizedMatch[]> {
+/** All matches of one matchday of one competition. */
+async function fetchMatchday(code: string, matchday: number): Promise<NormalizedMatch[]> {
   const data = await get<{ matches: Record<string, unknown>[] }>(
-    'matches',
-    {
-      dateFrom: isoDate(fromOffsetDays),
-      dateTo: isoDate(toOffsetDays),
-      competitions: ALL_CODES,
-      season: CURRENT_SEASON.toString(),
-    }
+    `competitions/${code}/matches`,
+    { matchday: matchday.toString(), season: CURRENT_SEASON.toString() },
   );
-  return (data.matches ?? []).map(normalizeMatch);
+  return (data.matches ?? []).map(normalizeMatch).filter(m => m.matchday === matchday);
 }
 
 /**
- * Fetch matches around today: the last 3 days and the next 7. If that window
- * is empty (e.g. an international break), look at the following 10 days so
- * the next round still shows. Throws on failure so callers don't mistake an
- * error for "no matches".
+ * The current round of one competition: every match of a single matchday.
+ * Uses the competition's "current matchday" from football-data.org. If that
+ * round is already over (nothing live, finished today or still to play),
+ * the next matchday is used instead.
  */
-export async function fetchMatchWindow(): Promise<NormalizedMatch[]> {
-  try {
-    const nearby = await fetchMatchesBetween(-3, 7);
-    if (nearby.length > 0) return nearby;
-    return await fetchMatchesBetween(8, 17);
-  } catch (error) {
-    console.error('Failed to fetch match window:', error);
-    throw error;
+async function fetchCurrentRound(leagueId: string): Promise<NormalizedMatch[]> {
+  const code = LEAGUE_CODES[leagueId];
+  const { currentMatchday } = await fetchStandings(leagueId);
+  if (!code || currentMatchday == null) return [];
+
+  for (const matchday of [currentMatchday, currentMatchday + 1]) {
+    const matches = await fetchMatchday(code, matchday);
+    const stillRelevant = matches.some(m => m.status !== 'finished' || isToday(m.utcDate));
+    if (stillRelevant) return matches;
   }
+  return [];
+}
+
+/**
+ * Current round for every competition (La Liga, EPL, Serie A, Bundesliga,
+ * Ligue 1, UCL). Each competition's matches all come from one matchday.
+ * A competition that fails to load is left out; throws only if all fail,
+ * so callers don't mistake an error for "no matches".
+ */
+export async function fetchCurrentMatchdays(): Promise<NormalizedMatch[]> {
+  const results = await Promise.allSettled(Object.keys(LEAGUE_CODES).map(fetchCurrentRound));
+  const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+  if (failed.length === results.length) {
+    console.error('Failed to fetch current matchdays:', failed[0]?.reason);
+    throw failed[0]?.reason ?? new Error('Failed to fetch matches');
+  }
+  failed.forEach(r => console.warn('[matches] one competition failed:', r.reason));
+  return results.flatMap(r => (r.status === 'fulfilled' ? r.value : []));
 }
 
 export interface StandingsResult {
