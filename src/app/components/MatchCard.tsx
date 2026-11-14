@@ -80,7 +80,7 @@ function TeamRow({ name, score, strength, highlight }: {
 export function MatchCard({ match, homeStrength, awayStrength }: MatchCardProps) {
   const isLive = match.status === 'live';
   return (
-    <div className="w-[176px] flex-shrink-0 snap-start rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-2.5 pb-2.5 pt-2 transition-colors hover:border-[#3a3a3a]">
+    <div className="h-full w-full rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-2.5 pb-2.5 pt-2 transition-colors hover:border-[#3a3a3a]">
       <div className="mb-1.5 h-4">
         <StatusLine match={match} />
       </div>
