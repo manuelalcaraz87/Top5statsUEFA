@@ -9,38 +9,44 @@ const leagues = [
   {
     id: 'la-liga',
     name: 'La Liga',
-    color: '#ee8707',
-    accentColor: '#ff4444',
+    label: 'La Liga',
+    color: '#94a3b8',
+    accentColor: '#94a3b8',
   },
   {
     id: 'epl',
     name: 'EPL',
-    color: '#3d195b',
-    accentColor: '#00ff87',
+    label: 'Premier League',
+    color: '#94a3b8',
+    accentColor: '#94a3b8',
   },
   {
     id: 'serie-a',
     name: 'Serie A',
-    color: '#024494',
-    accentColor: '#00a651',
+    label: 'Serie A',
+    color: '#94a3b8',
+    accentColor: '#94a3b8',
   },
   {
     id: 'bundesliga',
     name: 'Bundesliga',
-    color: '#d20515',
-    accentColor: '#ffffff',
+    label: 'Bundesliga',
+    color: '#94a3b8',
+    accentColor: '#94a3b8',
   },
   {
     id: 'ligue-1',
     name: 'Ligue 1',
-    color: '#dae025',
-    accentColor: '#14181e',
+    label: 'Ligue 1',
+    color: '#94a3b8',
+    accentColor: '#94a3b8',
   },
   {
     id: 'ucl',
     name: 'UCL',
-    color: '#003b7a',
-    accentColor: '#ffd700',
+    label: 'Champions League',
+    color: '#94a3b8',
+    accentColor: '#94a3b8',
   },
 ];
 
@@ -137,7 +143,7 @@ export default function App() {
                   }
                 >
                   <LeagueBadge league={league.name} size={24} />
-                  <span className="hidden sm:inline">{league.name}</span>
+                  <span>{league.label}</span>
                 </button>
               ))}
             </div>

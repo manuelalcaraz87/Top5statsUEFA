@@ -20,12 +20,12 @@ export const LEAGUE_CODES: Record<string, string> = {
 };
 
 export const COMP_CODE_TO_LEAGUE: Record<string, { name: string; id: string; color: string }> = {
-  'PL':  { name: 'EPL',        id: 'epl',        color: '#3d195b' },
-  'PD':  { name: 'La Liga',    id: 'la-liga',    color: '#ee8707' },
-  'SA':  { name: 'Serie A',    id: 'serie-a',    color: '#024494' },
-  'BL1': { name: 'Bundesliga', id: 'bundesliga', color: '#d20515' },
-  'FL1': { name: 'Ligue 1',   id: 'ligue-1',    color: '#dae025' },
-  'CL':  { name: 'UCL',        id: 'ucl',        color: '#003b7a' },
+  'PL':  { name: 'EPL',        id: 'epl',        color: '#94a3b8' },
+  'PD':  { name: 'La Liga',    id: 'la-liga',    color: '#94a3b8' },
+  'SA':  { name: 'Serie A',    id: 'serie-a',    color: '#94a3b8' },
+  'BL1': { name: 'Bundesliga', id: 'bundesliga', color: '#94a3b8' },
+  'FL1': { name: 'Ligue 1',   id: 'ligue-1',    color: '#94a3b8' },
+  'CL':  { name: 'UCL',        id: 'ucl',        color: '#94a3b8' },
 };
 
 // ── Team name normalization ────────────────────────────────────────────────────

@@ -55,43 +55,43 @@ interface Team {
 }
 
 const topTeams: Team[] = [
-  { id: 1, name: 'Real Madrid', league: 'La Liga', leagueColor: '#ee8707', points: 45, wins: 14, draws: 3, losses: 0, gd: 28 },
-  { id: 2, name: 'Man City', league: 'EPL', leagueColor: '#3d195b', points: 43, wins: 13, draws: 4, losses: 0, gd: 25 },
-  { id: 3, name: 'Inter Milan', league: 'Serie A', leagueColor: '#024494', points: 42, wins: 13, draws: 3, losses: 1, gd: 24 },
-  { id: 4, name: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#d20515', points: 41, wins: 13, draws: 2, losses: 2, gd: 27 },
-  { id: 5, name: 'PSG', league: 'Ligue 1', leagueColor: '#dae025', points: 40, wins: 12, draws: 4, losses: 1, gd: 22 },
+  { id: 1, name: 'Real Madrid', league: 'La Liga', leagueColor: '#94a3b8', points: 45, wins: 14, draws: 3, losses: 0, gd: 28 },
+  { id: 2, name: 'Man City', league: 'EPL', leagueColor: '#94a3b8', points: 43, wins: 13, draws: 4, losses: 0, gd: 25 },
+  { id: 3, name: 'Inter Milan', league: 'Serie A', leagueColor: '#94a3b8', points: 42, wins: 13, draws: 3, losses: 1, gd: 24 },
+  { id: 4, name: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#94a3b8', points: 41, wins: 13, draws: 2, losses: 2, gd: 27 },
+  { id: 5, name: 'PSG', league: 'Ligue 1', leagueColor: '#94a3b8', points: 40, wins: 12, draws: 4, losses: 1, gd: 22 },
 ];
 
 const topScorers: Player[] = [
-  { id: 1, name: 'Erling Haaland', team: 'Man City', league: 'EPL', leagueColor: '#3d195b', value: 18, stat2: 22 },
-  { id: 2, name: 'Harry Kane', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#d20515', value: 17, stat2: 20 },
-  { id: 3, name: 'Kylian Mbappé', team: 'Real Madrid', league: 'La Liga', leagueColor: '#ee8707', value: 16, stat2: 19 },
-  { id: 4, name: 'Lautaro Martínez', team: 'Inter Milan', league: 'Serie A', leagueColor: '#024494', value: 15, stat2: 18 },
-  { id: 5, name: 'Gonçalo Ramos', team: 'PSG', league: 'Ligue 1', leagueColor: '#dae025', value: 14, stat2: 17 },
+  { id: 1, name: 'Erling Haaland', team: 'Man City', league: 'EPL', leagueColor: '#94a3b8', value: 18, stat2: 22 },
+  { id: 2, name: 'Harry Kane', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#94a3b8', value: 17, stat2: 20 },
+  { id: 3, name: 'Kylian Mbappé', team: 'Real Madrid', league: 'La Liga', leagueColor: '#94a3b8', value: 16, stat2: 19 },
+  { id: 4, name: 'Lautaro Martínez', team: 'Inter Milan', league: 'Serie A', leagueColor: '#94a3b8', value: 15, stat2: 18 },
+  { id: 5, name: 'Gonçalo Ramos', team: 'PSG', league: 'Ligue 1', leagueColor: '#94a3b8', value: 14, stat2: 17 },
 ];
 
 const topAssists: Player[] = [
-  { id: 1, name: 'Kevin De Bruyne', team: 'Man City', league: 'EPL', leagueColor: '#3d195b', value: 12, stat2: 18 },
-  { id: 2, name: 'Florian Wirtz', team: 'Leverkusen', league: 'Bundesliga', leagueColor: '#d20515', value: 11, stat2: 16 },
-  { id: 3, name: 'Vinícius Jr', team: 'Real Madrid', league: 'La Liga', leagueColor: '#ee8707', value: 10, stat2: 15 },
-  { id: 4, name: 'Rafael Leão', team: 'AC Milan', league: 'Serie A', leagueColor: '#024494', value: 9, stat2: 14 },
-  { id: 5, name: 'Ousmane Dembélé', team: 'PSG', league: 'Ligue 1', leagueColor: '#dae025', value: 9, stat2: 13 },
+  { id: 1, name: 'Kevin De Bruyne', team: 'Man City', league: 'EPL', leagueColor: '#94a3b8', value: 12, stat2: 18 },
+  { id: 2, name: 'Florian Wirtz', team: 'Leverkusen', league: 'Bundesliga', leagueColor: '#94a3b8', value: 11, stat2: 16 },
+  { id: 3, name: 'Vinícius Jr', team: 'Real Madrid', league: 'La Liga', leagueColor: '#94a3b8', value: 10, stat2: 15 },
+  { id: 4, name: 'Rafael Leão', team: 'AC Milan', league: 'Serie A', leagueColor: '#94a3b8', value: 9, stat2: 14 },
+  { id: 5, name: 'Ousmane Dembélé', team: 'PSG', league: 'Ligue 1', leagueColor: '#94a3b8', value: 9, stat2: 13 },
 ];
 
 const topDefenders: Player[] = [
-  { id: 1, name: 'Rúben Dias', team: 'Man City', league: 'EPL', leagueColor: '#3d195b', value: 9.0, stat2: 8 },
-  { id: 2, name: 'Antonio Rüdiger', team: 'Real Madrid', league: 'La Liga', leagueColor: '#ee8707', value: 8.8, stat2: 7 },
-  { id: 3, name: 'Kim Min-jae', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#d20515', value: 8.6, stat2: 6 },
-  { id: 4, name: 'Alessandro Bastoni', team: 'Inter Milan', league: 'Serie A', leagueColor: '#024494', value: 8.4, stat2: 5 },
-  { id: 5, name: 'Marquinhos', team: 'PSG', league: 'Ligue 1', leagueColor: '#dae025', value: 8.2, stat2: 5 },
+  { id: 1, name: 'Rúben Dias', team: 'Man City', league: 'EPL', leagueColor: '#94a3b8', value: 9.0, stat2: 8 },
+  { id: 2, name: 'Antonio Rüdiger', team: 'Real Madrid', league: 'La Liga', leagueColor: '#94a3b8', value: 8.8, stat2: 7 },
+  { id: 3, name: 'Kim Min-jae', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#94a3b8', value: 8.6, stat2: 6 },
+  { id: 4, name: 'Alessandro Bastoni', team: 'Inter Milan', league: 'Serie A', leagueColor: '#94a3b8', value: 8.4, stat2: 5 },
+  { id: 5, name: 'Marquinhos', team: 'PSG', league: 'Ligue 1', leagueColor: '#94a3b8', value: 8.2, stat2: 5 },
 ];
 
 const topKeepers: Player[] = [
-  { id: 1, name: 'Ederson', team: 'Man City', league: 'EPL', leagueColor: '#3d195b', value: 12, stat2: 7.8 },
-  { id: 2, name: 'Thibaut Courtois', team: 'Real Madrid', league: 'La Liga', leagueColor: '#ee8707', value: 11, stat2: 7.6 },
-  { id: 3, name: 'Mike Maignan', team: 'AC Milan', league: 'Serie A', leagueColor: '#024494', value: 10, stat2: 7.4 },
-  { id: 4, name: 'Manuel Neuer', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#d20515', value: 10, stat2: 7.2 },
-  { id: 5, name: 'Gianluigi Donnarumma', team: 'PSG', league: 'Ligue 1', leagueColor: '#dae025', value: 9, stat2: 7.0 },
+  { id: 1, name: 'Ederson', team: 'Man City', league: 'EPL', leagueColor: '#94a3b8', value: 12, stat2: 7.8 },
+  { id: 2, name: 'Thibaut Courtois', team: 'Real Madrid', league: 'La Liga', leagueColor: '#94a3b8', value: 11, stat2: 7.6 },
+  { id: 3, name: 'Mike Maignan', team: 'AC Milan', league: 'Serie A', leagueColor: '#94a3b8', value: 10, stat2: 7.4 },
+  { id: 4, name: 'Manuel Neuer', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#94a3b8', value: 10, stat2: 7.2 },
+  { id: 5, name: 'Gianluigi Donnarumma', team: 'PSG', league: 'Ligue 1', leagueColor: '#94a3b8', value: 9, stat2: 7.0 },
 ];
 
 type TabType = 'top5' | 'teams' | 'goals' | 'assists' | 'defender' | 'gk';
@@ -105,11 +105,11 @@ export function TopStatsSection() {
   const ligue1 = useLeagueData('ligue-1');
 
   const liveLeagues = [
-    { id: 'la-liga', name: 'La Liga', color: '#ee8707', data: laLiga.data, loading: laLiga.loadingStandings || laLiga.loadingScorers, loadingDefenders: laLiga.loadingDefenders },
-    { id: 'epl', name: 'EPL', color: '#3d195b', data: epl.data, loading: epl.loadingStandings || epl.loadingScorers, loadingDefenders: epl.loadingDefenders },
-    { id: 'serie-a', name: 'Serie A', color: '#024494', data: serieA.data, loading: serieA.loadingStandings || serieA.loadingScorers, loadingDefenders: serieA.loadingDefenders },
-    { id: 'bundesliga', name: 'Bundesliga', color: '#d20515', data: bundesliga.data, loading: bundesliga.loadingStandings || bundesliga.loadingScorers, loadingDefenders: bundesliga.loadingDefenders },
-    { id: 'ligue-1', name: 'Ligue 1', color: '#dae025', data: ligue1.data, loading: ligue1.loadingStandings || ligue1.loadingScorers, loadingDefenders: ligue1.loadingDefenders },
+    { id: 'la-liga', name: 'La Liga', color: '#94a3b8', data: laLiga.data, loading: laLiga.loadingStandings || laLiga.loadingScorers, loadingDefenders: laLiga.loadingDefenders },
+    { id: 'epl', name: 'EPL', color: '#94a3b8', data: epl.data, loading: epl.loadingStandings || epl.loadingScorers, loadingDefenders: epl.loadingDefenders },
+    { id: 'serie-a', name: 'Serie A', color: '#94a3b8', data: serieA.data, loading: serieA.loadingStandings || serieA.loadingScorers, loadingDefenders: serieA.loadingDefenders },
+    { id: 'bundesliga', name: 'Bundesliga', color: '#94a3b8', data: bundesliga.data, loading: bundesliga.loadingStandings || bundesliga.loadingScorers, loadingDefenders: bundesliga.loadingDefenders },
+    { id: 'ligue-1', name: 'Ligue 1', color: '#94a3b8', data: ligue1.data, loading: ligue1.loadingStandings || ligue1.loadingScorers, loadingDefenders: ligue1.loadingDefenders },
   ];
 
   const liveTeams: Team[] = liveLeagues.flatMap(league =>
