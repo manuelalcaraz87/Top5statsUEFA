@@ -1,7 +1,7 @@
 import { useLeagueData } from '../../hooks/useLeagueData';
 import {
-  DOMESTIC_LISTS, FILE_CATEGORY, chipForCompetition, clubScoreIndex, findClubScore, listForLeague, scoreList, useScores,
-  type ScoreEntry,
+  FILE_CATEGORY, chipForCompetition, clubScoreIndex, findClubScore, listForLeague, scoreList, useScores,
+  type ScoreEntry, type ScoreList, type ScoresFile,
 } from '../../services/scoresService';
 
 // Shared data for the Top 5 area. Rankings, Top5 Scores and player stats come
@@ -32,6 +32,13 @@ export interface CategoryData {
   lastUpdated: Date | null;
   /** Set on a league or Champions League page; undefined on the home page. */
   league?: Top5League;
+  /**
+   * Set only when a Clubs table is built from the scores file because the live
+   * table has not arrived: the time the file was generated. Null otherwise.
+   */
+  tableAsOf?: Date | null;
+  /** True while a live table is still being waited for (only with tableAsOf). */
+  checkingLive?: boolean;
 }
 
 export type CategoryId = 'clubs' | 'strikers' | 'creators' | 'defenders' | 'goalkeepers';
@@ -101,6 +108,40 @@ function entryFromFile(id: CategoryId, e: ScoreEntry, listKey: string): Top5Entr
   };
 }
 
+/** A number from the scores file, or null if it is missing. */
+function fileNumber(value: string | number | null | undefined): number | null {
+  const n = typeof value === 'number' ? value : Number(value);
+  return value === null || value === undefined || value === '' || Number.isNaN(n) ? null : n;
+}
+
+/**
+ * Clubs table for a league page built from the scores file alone: every club
+ * of the competition, ordered by points, then goal difference, then goals scored.
+ */
+function clubsFromFile(scores: ScoresFile | null, league: Top5League, listKey: ScoreList): Top5Entry[] {
+  const rows = scoreList(scores, 'club', listKey).map(e => {
+    const points = fileNumber(e.stats?.points);
+    const scored = fileNumber(e.stats?.goalsScored);
+    const conceded = fileNumber(e.stats?.goalsConceded);
+    return {
+      points: points ?? 0,
+      goalDifference: (scored ?? 0) - (conceded ?? 0),
+      scored: scored ?? 0,
+      entry: {
+        key: `${league.id}-file-${e.name}`,
+        name: e.name,
+        club: e.club,
+        league: league.name,
+        top5Score: e.score,
+        opponentsFaced: e.opponentsFaced ?? null,
+        stats: [points, e.stats?.wonDrawnLost ?? null, scored, conceded, fileNumber(e.stats?.cleanSheets)],
+      } satisfies Top5Entry,
+    };
+  });
+  rows.sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.scored - a.scored);
+  return rows.map(r => r.entry);
+}
+
 /**
  * Everything the Top 5 tabs show. Home page (no league): the file's "overall"
  * lists. League page: that competition's lists, and the Clubs tab lists the
@@ -119,12 +160,20 @@ export function useTop5Data(league?: Top5League): Record<CategoryId, CategoryDat
   const fromFile = (id: CategoryId): Top5Entry[] =>
     scoreList(scores, FILE_CATEGORY[id], listKey).slice(0, TOP_N).map(e => entryFromFile(id, e, listKey));
 
-  // Clubs on a league page: the whole table, in table order. The Champions
-  // League table also holds clubs from outside the five leagues; they have no
-  // score, so they are matched against all five leagues and otherwise left blank.
+  // Clubs on a league page: the whole table, in table order.
   let clubs: Top5Entry[];
-  if (league) {
-    const index = clubScoreIndex(scores, league.id === 'ucl' ? DOMESTIC_LISTS : [listKey]);
+  let tableAsOf: Date | null = null;
+  if (league && table.data.standings.length === 0) {
+    // The live table has not arrived (the server may be waking up, or never
+    // answers): show the scores file's table so the visitor is never left
+    // with an empty one. It is replaced as soon as the live table arrives.
+    clubs = clubsFromFile(scores, league, listKey);
+    if (clubs.length > 0) tableAsOf = lastUpdated;
+  } else if (league) {
+    // Score and clean sheets come from this competition's own list in the file
+    // (the Champions League list holds all 36 clubs), so they match the file
+    // table shown before the live one arrives.
+    const index = clubScoreIndex(scores, [listKey]);
     clubs = table.data.standings.map(s => {
       const hit = findClubScore(index, s.team);
       return {
@@ -134,7 +183,8 @@ export function useTop5Data(league?: Top5League): Record<CategoryId, CategoryDat
         league: league.name,
         top5Score: hit?.score ?? null,
         opponentsFaced: hit?.opponentsFaced ?? null,
-        stats: [s.points, `${s.won}–${s.drawn}–${s.lost}`, s.gf, s.ga, null],
+        // Clean sheets are not in the live table, so they come from the file.
+        stats: [s.points, `${s.won}–${s.drawn}–${s.lost}`, s.gf, s.ga, fileNumber(hit?.stats?.cleanSheets)],
       };
     });
   } else {
@@ -145,7 +195,7 @@ export function useTop5Data(league?: Top5League): Record<CategoryId, CategoryDat
   const data = (entries: Top5Entry[], loading: boolean): CategoryData => ({ entries, loading, lastUpdated, league });
 
   return {
-    clubs:       data(clubs, clubsLoading),
+    clubs:       { ...data(clubs, clubsLoading), tableAsOf, checkingLive: tableAsOf !== null && table.loadingStandings },
     strikers:    data(fromFile('strikers'), loadingScores),
     creators:    data(fromFile('creators'), loadingScores),
     defenders:   data(fromFile('defenders'), loadingScores),

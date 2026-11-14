@@ -38,7 +38,7 @@ interface MatchesSectionProps {
 }
 
 export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
-  const { allMatches, loading, error, refresh } = useMatches();
+  const { allMatches, loading, waking, error, refresh } = useMatches(onlyLeagueId);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   // Never fall back to other competitions: if the selected one has no
@@ -55,7 +55,7 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
     ...Object.keys(byLeague).filter(l => !LEAGUE_ORDER.includes(l)),
   ];
 
-  const strengths = useClubStrengths(matches.map(m => m.leagueId));
+  const strengths = useClubStrengths(matches);
   const hasLive = matches.some(m => m.status === 'live');
 
   const scroll = (direction: 'left' | 'right') => {
@@ -67,7 +67,12 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
 
   let empty: ReactNode = null;
   if (leagues.length === 0) {
-    if (loading) empty = <NoCurrentData loading compact />;
+    if (loading && waking) empty = (
+      <div className="rounded-lg border border-gray-800 bg-[#1a1a1a] p-3">
+        <p className="text-sm italic text-gray-400">Waking up live data, this can take up to a minute</p>
+      </div>
+    );
+    else if (loading) empty = <NoCurrentData loading compact />;
     else if (error) empty = <NoCurrentData compact />;
     else empty = (
       <div className="rounded-lg border border-gray-800 bg-[#1a1a1a] p-3">
@@ -123,7 +128,6 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
           >
             {leagues.map(leagueName => {
               const leagueMatches = byLeague[leagueName];
-              const leagueStrengths = strengths[leagueMatches[0].leagueId] ?? {};
               return (
                 <div key={leagueName} className="flex-shrink-0">
                   <div className="mb-2 flex items-center gap-2">
@@ -138,8 +142,8 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
                       <MatchCard
                         key={match.id}
                         match={match}
-                        homeStrength={leagueStrengths[match.homeTeam]}
-                        awayStrength={leagueStrengths[match.awayTeam]}
+                        homeStrength={strengths[match.id]?.home}
+                        awayStrength={strengths[match.id]?.away}
                       />
                     ))}
                   </div>
