@@ -1,14 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import {
-  getLeagueFeed,
-  getTrending,
-  getStatus,
-} from './social/ingestion.js';
-import { getAllLeagueIds } from './social/sources.js';
 
 dotenv.config();
+
+const MINUTE_MS = 60 * 1000;
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -20,14 +16,42 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Simple in-memory cache, with a separate lifetime per data provider.
-// football-data.org: at least 5 minutes (it allows 10 requests a minute).
-// API-Football: at least 6 hours (the free plan allows 100 requests a day).
-// The .env values can make these longer, never shorter.
+// Render puts a proxy in front of this server; trust it so each visitor is
+// counted by their own IP address and not by Render's.
+app.set('trust proxy', 1);
+
+// ── Per-visitor rate limit ────────────────────────────────────────────────────
+// At most RATE_LIMIT_PER_MINUTE requests a minute per IP address; anything
+// above that gets a 429 until the minute is over.
+const RATE_LIMIT_PER_MINUTE = 60;
+const rateHits = new Map(); // ip -> { count, resetAt }
+
+app.use((req, res, next) => {
+  const now = Date.now();
+  let entry = rateHits.get(req.ip);
+  if (!entry || now >= entry.resetAt) {
+    entry = { count: 0, resetAt: now + MINUTE_MS };
+    rateHits.set(req.ip, entry);
+  }
+  entry.count += 1;
+  if (entry.count > RATE_LIMIT_PER_MINUTE) {
+    res.set('Retry-After', String(Math.ceil((entry.resetAt - now) / 1000)));
+    return res.status(429).json({ error: 'Too many requests. Please slow down.' });
+  }
+  next();
+});
+
+// Forget visitors whose minute is over, so the table cannot grow forever.
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateHits) if (now >= entry.resetAt) rateHits.delete(ip);
+}, MINUTE_MS).unref();
+
+// Simple in-memory cache for football-data.org responses: at least 5 minutes
+// (the free plan allows 10 requests a minute). The .env value can make this
+// longer, never shorter.
 const cache = new Map();
-const MINUTE_MS = 60 * 1000;
 const FD_CACHE_TTL = Math.max(Number(process.env.FD_CACHE_TTL_MINUTES) || 5, 5) * MINUTE_MS;
-const AF_CACHE_TTL = Math.max(Number(process.env.AF_CACHE_TTL_MINUTES) || 360, 360) * MINUTE_MS;
 
 function getCacheKey(path, query) {
   return `${path}?${new URLSearchParams(query).toString()}`;
@@ -101,26 +125,30 @@ function fdFetchShared(url) {
   return fdInFlight.get(url);
 }
 
-const afInFlight = new Map(); // url -> Promise<{ status, data }>
-
-async function afFetchOnce(url) {
-  const response = await fetch(url, { headers: { 'x-apisports-key': process.env.AF_TOKEN } });
-  const data = await response.json().catch(() => null);
-  return { status: response.status, statusText: response.statusText, data };
-}
-
-function afFetchShared(url) {
-  if (!afInFlight.has(url)) {
-    afInFlight.set(url, afFetchOnce(url).finally(() => afInFlight.delete(url)));
-  }
-  return afInFlight.get(url);
-}
-
 // Football Data API Proxy
+// Only GET requests for exactly the pages the site uses are passed on:
+//   competitions/{PL|PD|SA|BL1|FL1|CL}/{standings|matches|scorers}
+// with only the options the site sends (season, matchday, limit), each a plain
+// number. Everything else is answered with 404.
+const FD_PATH = /^competitions\/(PL|PD|SA|BL1|FL1|CL)\/(standings|matches|scorers)$/;
+const FD_ALLOWED_PARAMS = ['season', 'matchday', 'limit'];
+
+function cleanFdQuery(query) {
+  const clean = {};
+  for (const [key, value] of Object.entries(query)) {
+    if (!FD_ALLOWED_PARAMS.includes(key)) return null;
+    if (typeof value !== 'string' || !/^\d{1,4}$/.test(value)) return null;
+    clean[key] = value;
+  }
+  return clean;
+}
+
 app.get('/api/fd/*', async (req, res) => {
   try {
     const path = req.params[0];
-    const cacheKey = getCacheKey(`fd/${path}`, req.query);
+    const query = FD_PATH.test(path) ? cleanFdQuery(req.query) : null;
+    if (!query) return res.status(404).json({ error: 'Not found' });
+    const cacheKey = getCacheKey(`fd/${path}`, query);
 
     // Check cache first
     const cached = getFromCache(cacheKey, FD_CACHE_TTL);
@@ -128,7 +156,7 @@ app.get('/api/fd/*', async (req, res) => {
       return res.json(cached);
     }
 
-    const queryString = new URLSearchParams(req.query).toString();
+    const queryString = new URLSearchParams(query).toString();
     const url = `https://api.football-data.org/v4/${path}${queryString ? '?' + queryString : ''}`;
 
     const { status, statusText, data } = await fdFetchShared(url);
@@ -151,81 +179,14 @@ app.get('/api/fd/*', async (req, res) => {
   }
 });
 
-// API Football Proxy
-app.get('/api/af/*', async (req, res) => {
-  try {
-    const path = req.params[0];
-    const cacheKey = getCacheKey(`af/${path}`, req.query);
-
-    // Check cache first
-    const cached = getFromCache(cacheKey, AF_CACHE_TTL);
-    if (cached) {
-      // Refusals are cached too (see below), so they don't use up requests.
-      return cached.afRefusal ? res.status(502).json(cached.afRefusal) : res.json(cached);
-    }
-
-    const queryString = new URLSearchParams(req.query).toString();
-    const url = `https://v3.football.api-sports.io/${path}${queryString ? '?' + queryString : ''}`;
-
-    // Identical requests that arrive together share one upstream call,
-    // so they use up only one of the 100 daily requests.
-    const { status, statusText, data } = await afFetchShared(url);
-
-    if (status === 429) {
-      return res.status(429).json({ error: 'Rate limited by API Football' });
-    }
-
-    if (status < 200 || status >= 300 || !data) {
-      return res.status(status >= 400 ? status : 502).json({
-        error: `API Football error: ${statusText}`
-      });
-    }
-
-    // API-Football reports problems (daily limit reached, plan does not
-    // cover this season, bad key) with HTTP 200 and an "errors" field.
-    const errors = data.errors;
-    const hasErrors = Array.isArray(errors) ? errors.length > 0 : errors && Object.keys(errors).length > 0;
-    if (hasErrors) {
-      console.warn('[af] upstream reported errors:', JSON.stringify(errors));
-      // Cache the refusal for the same 6+ hours: asking again would give the
-      // same answer and still count against the 100-a-day limit.
-      const refusal = { error: 'API Football error', details: errors };
-      setCache(cacheKey, { afRefusal: refusal });
-      return res.status(502).json(refusal);
-    }
-
-    setCache(cacheKey, data);
-    res.json(data);
-  } catch (error) {
-    console.error('AF Proxy Error:', error);
-    res.status(500).json({ error: 'Failed to fetch from API Football' });
-  }
-});
-
-// Social feed: posts scraped from X.com for a league's players, clubs,
-// league accounts and top commentators, ranked by the trending algorithm.
-app.get('/api/social/feed/:leagueId', (req, res) => {
-  const { leagueId } = req.params;
-  if (!getAllLeagueIds().includes(leagueId)) {
-    return res.status(404).json({ error: `Unknown league: ${leagueId}` });
-  }
-  const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
-  res.json({ posts: getLeagueFeed(leagueId, { limit }) });
-});
-
-// Trending hashtags/topics aggregated across all leagues.
-app.get('/api/social/trending', (req, res) => {
-  res.json({ trending: getTrending() });
-});
-
-// Ingestion status/diagnostics.
-app.get('/api/social/status', (req, res) => {
-  res.json(getStatus());
-});
-
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Anything else (wrong method, unknown address, the disabled social routes) is a 404.
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
 });
 
 app.listen(PORT, () => {
