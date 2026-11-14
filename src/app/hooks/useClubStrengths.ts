@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { fetchStandings, type StandingsResult } from '../services/footballDataService';
 import { calculateClubStrengths } from '../services/clubStrength';
+import { loadScores } from '../services/scoresService';
 
 // Standings for the competitions shown in the match strip, turned into club
-// strength numbers. Uses real football-data.org tables only; a competition
-// whose table can't be loaded simply has no numbers ("No current data").
+// strength numbers (Top5 Scores). A competition whose table or scores can't be loaded simply has no numbers ("No current data").
 
 const TTL = 10 * 60_000; // 10 min, same as the league pages
 const cache = new Map<string, { data: StandingsResult; timestamp: number }>();
@@ -38,8 +38,9 @@ export function useClubStrengths(leagueIds: string[]): ClubStrengthsByLeague {
     if (!key) return;
     let cancelled = false;
     for (const leagueId of key.split(',')) {
-      loadStandings(leagueId)
-        .then(result => {
+      // The strength is the Top5 Score, so both the table and the scores file must have loaded.
+      Promise.all([loadStandings(leagueId), loadScores()])
+        .then(([result]) => {
           if (cancelled) return;
           const forLeague = calculateClubStrengths(result.standings);
           setStrengths(prev => ({ ...prev, [leagueId]: forLeague }));
