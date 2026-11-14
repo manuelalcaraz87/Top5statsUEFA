@@ -3,12 +3,9 @@ import { Trophy, Goal, Users, Shield, Activity, Hand, Wifi, WifiOff } from 'luci
 import { PieChart, Pie, Cell } from 'recharts';
 import { ClubCrest } from './ClubCrest';
 import { LeagueBadge } from './LeagueBadge';
-import { MatchCard } from './MatchCard';
 import { NoCurrentData } from './NoCurrentData';
 import { LEAGUES, type LeagueData, type Player, type FormResult } from '../data/leagueData';
 import { useLeagueData } from '../hooks/useLeagueData';
-import { useMatches } from '../hooks/useMatches';
-import type { NormalizedMatch } from '../services/footballDataService';
 
 interface League {
   id: string;
@@ -62,70 +59,17 @@ function SectionHeading({ icon: Icon, iconClass, title }: { icon: typeof Goal; i
   );
 }
 
-// ── Match strip (mirrors one MatchesSection league group) ────────────────────
+// ── League heading (the match strip itself is shown above every page) ───────
 
-function LeagueMatchStrip({
-  data,
-  league,
-  liveMatches,
-  loading,
-}: {
-  data: LeagueData;
-  league: League;
-  liveMatches?: NormalizedMatch[];
-  loading: boolean;
-}) {
-  const cards = (liveMatches ?? []).map(m => ({
-    id: m.id, homeTeam: m.homeTeam, awayTeam: m.awayTeam,
-    homeScore: m.homeScore, awayScore: m.awayScore,
-    status: m.status, minute: m.minute ?? undefined, time: m.time,
-    league: league.name, leagueColor: league.color,
-  }));
-  const isLive = cards.length > 0;
-  const hasLiveStatus = cards.some(m => m.status === 'live');
-
+function LeagueHeading({ data, league }: { data: LeagueData; league: League }) {
   return (
     <div className="bg-[#0d0d0d] border-b border-gray-900">
-      <div className="max-w-[1800px] mx-auto">
-        {/* League header */}
-        <div className="relative h-14 overflow-hidden flex items-center px-4 sm:px-6 lg:px-8" style={{ background: 'linear-gradient(to right, #1a1a1a 0%, #141414 55%, #0d0d0d 100%)' }}>
-          <div className="relative z-10 flex items-center gap-3">
-            <LeagueBadge league={league.name} size={32} />
-            <span className="text-white font-bold text-sm">{league.name}</span>
-            {data.currentMatchday !== null && (
-              <span className="text-gray-400 text-xs">· Matchday {data.currentMatchday}</span>
-            )}
-          </div>
-          <div className="ml-auto relative z-10 flex items-center gap-2">
-            {isLive ? (
-              <div className="flex items-center gap-1.5">
-                <Wifi className="w-3 h-3 text-green-400" />
-                {hasLiveStatus && (
-                  <span className="flex items-center gap-1 text-[10px] text-red-400 font-semibold">
-                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                    Live
-                  </span>
-                )}
-              </div>
-            ) : (
-              <WifiOff className="w-3 h-3 text-gray-600" />
-            )}
-            {isLive && <span className="text-gray-500 text-xs">{cards.length} matches</span>}
-          </div>
-        </div>
-
-        {/* Compact match cards */}
-        <div className="px-4 sm:px-6 lg:px-8 py-3 overflow-x-auto scrollbar-hide">
-          {isLive ? (
-            <div className="flex gap-3">
-              {cards.map(m => (
-                <MatchCard key={m.id} match={m as any} compact />
-              ))}
-            </div>
-          ) : (
-            <NoCurrentData title="Matches" loading={loading} compact />
-          )}
-        </div>
+      <div className="max-w-[1800px] mx-auto h-14 flex items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <LeagueBadge league={league.name} size={32} />
+        <span className="text-white font-bold text-sm">{league.name}</span>
+        {data.currentMatchday !== null && (
+          <span className="text-gray-400 text-xs">· Matchday {data.currentMatchday}</span>
+        )}
       </div>
     </div>
   );
@@ -693,14 +637,13 @@ function LeagueStatsSection({ data, league, isLive, topTeamScorer, loadingStandi
 
 export function LeaguePage({ league }: { league: League }) {
   const { data, isLive, topTeamScorer, loadingStandings, loadingScorers } = useLeagueData(league.id);
-  const { matchesByLeague, loading: loadingMatches } = useMatches();
 
   if (!LEAGUES.some(l => l.id === league.id)) return null;
 
   return (
     <div key={league.id}>
-      {/* ── Match strip ── */}
-      <LeagueMatchStrip data={data} league={league} liveMatches={matchesByLeague[league.name]} loading={loadingMatches} />
+      {/* ── League heading ── */}
+      <LeagueHeading data={data} league={league} />
 
       {/* ── Stats, full width like Home (social feed hidden pending redesign) ── */}
       <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
