@@ -1,6 +1,6 @@
 import { useLeagueData } from '../../hooks/useLeagueData';
 import {
-  DOMESTIC_LISTS, FILE_CATEGORY, chipForCompetition, clubScoreIndex, findClubScore, listForLeague, scoreList, useScores,
+  FILE_CATEGORY, chipForCompetition, clubScoreIndex, findClubScore, listForLeague, scoreList, useScores,
   type ScoreEntry, type ScoreList, type ScoresFile,
 } from '../../services/scoresService';
 
@@ -160,9 +160,7 @@ export function useTop5Data(league?: Top5League): Record<CategoryId, CategoryDat
   const fromFile = (id: CategoryId): Top5Entry[] =>
     scoreList(scores, FILE_CATEGORY[id], listKey).slice(0, TOP_N).map(e => entryFromFile(id, e, listKey));
 
-  // Clubs on a league page: the whole table, in table order. The Champions
-  // League table also holds clubs from outside the five leagues; they have no
-  // score, so they are matched against all five leagues and otherwise left blank.
+  // Clubs on a league page: the whole table, in table order.
   let clubs: Top5Entry[];
   let tableAsOf: Date | null = null;
   if (league && table.data.standings.length === 0) {
@@ -172,7 +170,10 @@ export function useTop5Data(league?: Top5League): Record<CategoryId, CategoryDat
     clubs = clubsFromFile(scores, league, listKey);
     if (clubs.length > 0) tableAsOf = lastUpdated;
   } else if (league) {
-    const index = clubScoreIndex(scores, league.id === 'ucl' ? DOMESTIC_LISTS : [listKey]);
+    // Score and clean sheets come from this competition's own list in the file
+    // (the Champions League list holds all 36 clubs), so they match the file
+    // table shown before the live one arrives.
+    const index = clubScoreIndex(scores, [listKey]);
     clubs = table.data.standings.map(s => {
       const hit = findClubScore(index, s.team);
       return {
@@ -182,7 +183,8 @@ export function useTop5Data(league?: Top5League): Record<CategoryId, CategoryDat
         league: league.name,
         top5Score: hit?.score ?? null,
         opponentsFaced: hit?.opponentsFaced ?? null,
-        stats: [s.points, `${s.won}–${s.drawn}–${s.lost}`, s.gf, s.ga, null],
+        // Clean sheets are not in the live table, so they come from the file.
+        stats: [s.points, `${s.won}–${s.drawn}–${s.lost}`, s.gf, s.ga, fileNumber(hit?.stats?.cleanSheets)],
       };
     });
   } else {

@@ -55,7 +55,7 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
     ...Object.keys(byLeague).filter(l => !LEAGUE_ORDER.includes(l)),
   ];
 
-  const strengths = useClubStrengths(matches.flatMap(m => [m.homeTeam, m.awayTeam]));
+  const strengths = useClubStrengths(matches);
   const hasLive = matches.some(m => m.status === 'live');
 
   const scroll = (direction: 'left' | 'right') => {
@@ -142,8 +142,8 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
                       <MatchCard
                         key={match.id}
                         match={match}
-                        homeStrength={strengths[match.homeTeam]}
-                        awayStrength={strengths[match.awayTeam]}
+                        homeStrength={strengths[match.id]?.home}
+                        awayStrength={strengths[match.id]?.away}
                       />
                     ))}
                   </div>
