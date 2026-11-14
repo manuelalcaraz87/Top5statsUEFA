@@ -20,17 +20,22 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Simple in-memory cache
+// Simple in-memory cache, with a separate lifetime per data provider.
+// football-data.org: at least 5 minutes (it allows 10 requests a minute).
+// API-Football: at least 6 hours (the free plan allows 100 requests a day).
+// The .env values can make these longer, never shorter.
 const cache = new Map();
-const CACHE_TTL = (process.env.CACHE_TTL_MINUTES || 60) * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
+const FD_CACHE_TTL = Math.max(Number(process.env.FD_CACHE_TTL_MINUTES) || 5, 5) * MINUTE_MS;
+const AF_CACHE_TTL = Math.max(Number(process.env.AF_CACHE_TTL_MINUTES) || 360, 360) * MINUTE_MS;
 
 function getCacheKey(path, query) {
   return `${path}?${new URLSearchParams(query).toString()}`;
 }
 
-function getFromCache(key) {
+function getFromCache(key, ttl) {
   const cached = cache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  if (cached && Date.now() - cached.timestamp < ttl) {
     return cached.data;
   }
   cache.delete(key);
@@ -96,6 +101,21 @@ function fdFetchShared(url) {
   return fdInFlight.get(url);
 }
 
+const afInFlight = new Map(); // url -> Promise<{ status, data }>
+
+async function afFetchOnce(url) {
+  const response = await fetch(url, { headers: { 'x-apisports-key': process.env.AF_TOKEN } });
+  const data = await response.json().catch(() => null);
+  return { status: response.status, statusText: response.statusText, data };
+}
+
+function afFetchShared(url) {
+  if (!afInFlight.has(url)) {
+    afInFlight.set(url, afFetchOnce(url).finally(() => afInFlight.delete(url)));
+  }
+  return afInFlight.get(url);
+}
+
 // Football Data API Proxy
 app.get('/api/fd/*', async (req, res) => {
   try {
@@ -103,7 +123,7 @@ app.get('/api/fd/*', async (req, res) => {
     const cacheKey = getCacheKey(`fd/${path}`, req.query);
 
     // Check cache first
-    const cached = getFromCache(cacheKey);
+    const cached = getFromCache(cacheKey, FD_CACHE_TTL);
     if (cached) {
       return res.json(cached);
     }
@@ -136,33 +156,44 @@ app.get('/api/af/*', async (req, res) => {
   try {
     const path = req.params[0];
     const cacheKey = getCacheKey(`af/${path}`, req.query);
-    
+
     // Check cache first
-    const cached = getFromCache(cacheKey);
+    const cached = getFromCache(cacheKey, AF_CACHE_TTL);
     if (cached) {
-      return res.json(cached);
+      // Refusals are cached too (see below), so they don't use up requests.
+      return cached.afRefusal ? res.status(502).json(cached.afRefusal) : res.json(cached);
     }
 
     const queryString = new URLSearchParams(req.query).toString();
     const url = `https://v3.football.api-sports.io/${path}${queryString ? '?' + queryString : ''}`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'x-apisports-key': process.env.AF_TOKEN,
-      },
-    });
 
-    if (response.status === 429) {
+    // Identical requests that arrive together share one upstream call,
+    // so they use up only one of the 100 daily requests.
+    const { status, statusText, data } = await afFetchShared(url);
+
+    if (status === 429) {
       return res.status(429).json({ error: 'Rate limited by API Football' });
     }
 
-    if (!response.ok) {
-      return res.status(response.status).json({ 
-        error: `API Football error: ${response.statusText}` 
+    if (status < 200 || status >= 300 || !data) {
+      return res.status(status >= 400 ? status : 502).json({
+        error: `API Football error: ${statusText}`
       });
     }
 
-    const data = await response.json();
+    // API-Football reports problems (daily limit reached, plan does not
+    // cover this season, bad key) with HTTP 200 and an "errors" field.
+    const errors = data.errors;
+    const hasErrors = Array.isArray(errors) ? errors.length > 0 : errors && Object.keys(errors).length > 0;
+    if (hasErrors) {
+      console.warn('[af] upstream reported errors:', JSON.stringify(errors));
+      // Cache the refusal for the same 6+ hours: asking again would give the
+      // same answer and still count against the 100-a-day limit.
+      const refusal = { error: 'API Football error', details: errors };
+      setCache(cacheKey, { afRefusal: refusal });
+      return res.status(502).json(refusal);
+    }
+
     setCache(cacheKey, data);
     res.json(data);
   } catch (error) {
