@@ -4,7 +4,7 @@ Top5Stats is an independent football statistics site. It shows the top 5 teams, 
 
 Top5Stats is not affiliated with, endorsed by or sponsored by any league, club, player or UEFA. Club, league and player names are used for identification only.
 
-Data comes from [football-data.org](https://www.football-data.org/), [API-Football](https://www.api-football.com/) and [Sportmonks](https://www.sportmonks.com/).
+Data comes from [football-data.org](https://www.football-data.org/) and [API-Football](https://www.api-football.com/).
 
 ## What's in this project
 

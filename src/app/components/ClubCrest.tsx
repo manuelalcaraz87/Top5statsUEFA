@@ -1,5 +1,3 @@
-import { normalizeSportmonksClubName } from '../services/clubNames';
-
 // Neutral placeholder badge: the same plain shield and slate/grey colours for
 // every club, with a short text code. No real crests, logos or club colours.
 
@@ -10,7 +8,7 @@ const TEXT = '#F1F5F9';   // slate-100
 
 /** Build a 2-3 letter code from a club name, e.g. "Real Madrid" -> "RM", "Arsenal" -> "ARS". */
 function shortCode(club: string): string {
-  const name = normalizeSportmonksClubName(club)
+  const name = club
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, ''); // strip accents
   const words = name.split(/[^A-Za-z0-9]+/).filter(w => /[A-Za-z]/.test(w));

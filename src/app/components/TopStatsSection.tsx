@@ -3,6 +3,7 @@ import { Trophy, Goal, Users, Shield, Activity, Hand } from 'lucide-react';
 import { PieChart, Pie, Cell } from 'recharts';
 import { ClubCrest } from './ClubCrest';
 import { LeagueBadge } from './LeagueBadge';
+import { NoCurrentData, NO_CURRENT_DATA } from './NoCurrentData';
 import { useLeagueData } from '../hooks/useLeagueData';
 
 function PlayerAvatar({ name, teamColor, size = 40 }: { name: string; teamColor: string; size?: number }) {
@@ -32,8 +33,7 @@ interface Player {
   leagueColor: string;
   value: number;
   stat2?: number;
-  // Optional richer fields, populated only for live defender/goalkeeper
-  // stats (Sportmonks — see sportmonksService.ts / useLeagueData.ts).
+  // Optional defender/goalkeeper fields (no data provider for these yet).
   tacklesWon?: number;
   interceptions?: number;
   clearances?: number;
@@ -54,46 +54,6 @@ interface Team {
   gd: number;
 }
 
-const topTeams: Team[] = [
-  { id: 1, name: 'Real Madrid', league: 'La Liga', leagueColor: '#94a3b8', points: 45, wins: 14, draws: 3, losses: 0, gd: 28 },
-  { id: 2, name: 'Man City', league: 'EPL', leagueColor: '#94a3b8', points: 43, wins: 13, draws: 4, losses: 0, gd: 25 },
-  { id: 3, name: 'Inter Milan', league: 'Serie A', leagueColor: '#94a3b8', points: 42, wins: 13, draws: 3, losses: 1, gd: 24 },
-  { id: 4, name: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#94a3b8', points: 41, wins: 13, draws: 2, losses: 2, gd: 27 },
-  { id: 5, name: 'PSG', league: 'Ligue 1', leagueColor: '#94a3b8', points: 40, wins: 12, draws: 4, losses: 1, gd: 22 },
-];
-
-const topScorers: Player[] = [
-  { id: 1, name: 'Erling Haaland', team: 'Man City', league: 'EPL', leagueColor: '#94a3b8', value: 18, stat2: 22 },
-  { id: 2, name: 'Harry Kane', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#94a3b8', value: 17, stat2: 20 },
-  { id: 3, name: 'Kylian Mbappé', team: 'Real Madrid', league: 'La Liga', leagueColor: '#94a3b8', value: 16, stat2: 19 },
-  { id: 4, name: 'Lautaro Martínez', team: 'Inter Milan', league: 'Serie A', leagueColor: '#94a3b8', value: 15, stat2: 18 },
-  { id: 5, name: 'Gonçalo Ramos', team: 'PSG', league: 'Ligue 1', leagueColor: '#94a3b8', value: 14, stat2: 17 },
-];
-
-const topAssists: Player[] = [
-  { id: 1, name: 'Kevin De Bruyne', team: 'Man City', league: 'EPL', leagueColor: '#94a3b8', value: 12, stat2: 18 },
-  { id: 2, name: 'Florian Wirtz', team: 'Leverkusen', league: 'Bundesliga', leagueColor: '#94a3b8', value: 11, stat2: 16 },
-  { id: 3, name: 'Vinícius Jr', team: 'Real Madrid', league: 'La Liga', leagueColor: '#94a3b8', value: 10, stat2: 15 },
-  { id: 4, name: 'Rafael Leão', team: 'AC Milan', league: 'Serie A', leagueColor: '#94a3b8', value: 9, stat2: 14 },
-  { id: 5, name: 'Ousmane Dembélé', team: 'PSG', league: 'Ligue 1', leagueColor: '#94a3b8', value: 9, stat2: 13 },
-];
-
-const topDefenders: Player[] = [
-  { id: 1, name: 'Rúben Dias', team: 'Man City', league: 'EPL', leagueColor: '#94a3b8', value: 9.0, stat2: 8 },
-  { id: 2, name: 'Antonio Rüdiger', team: 'Real Madrid', league: 'La Liga', leagueColor: '#94a3b8', value: 8.8, stat2: 7 },
-  { id: 3, name: 'Kim Min-jae', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#94a3b8', value: 8.6, stat2: 6 },
-  { id: 4, name: 'Alessandro Bastoni', team: 'Inter Milan', league: 'Serie A', leagueColor: '#94a3b8', value: 8.4, stat2: 5 },
-  { id: 5, name: 'Marquinhos', team: 'PSG', league: 'Ligue 1', leagueColor: '#94a3b8', value: 8.2, stat2: 5 },
-];
-
-const topKeepers: Player[] = [
-  { id: 1, name: 'Ederson', team: 'Man City', league: 'EPL', leagueColor: '#94a3b8', value: 12, stat2: 7.8 },
-  { id: 2, name: 'Thibaut Courtois', team: 'Real Madrid', league: 'La Liga', leagueColor: '#94a3b8', value: 11, stat2: 7.6 },
-  { id: 3, name: 'Mike Maignan', team: 'AC Milan', league: 'Serie A', leagueColor: '#94a3b8', value: 10, stat2: 7.4 },
-  { id: 4, name: 'Manuel Neuer', team: 'Bayern Munich', league: 'Bundesliga', leagueColor: '#94a3b8', value: 10, stat2: 7.2 },
-  { id: 5, name: 'Gianluigi Donnarumma', team: 'PSG', league: 'Ligue 1', leagueColor: '#94a3b8', value: 9, stat2: 7.0 },
-];
-
 type TabType = 'top5' | 'teams' | 'goals' | 'assists' | 'defender' | 'gk';
 
 export function TopStatsSection() {
@@ -105,11 +65,11 @@ export function TopStatsSection() {
   const ligue1 = useLeagueData('ligue-1');
 
   const liveLeagues = [
-    { id: 'la-liga', name: 'La Liga', color: '#94a3b8', data: laLiga.data, loading: laLiga.loadingStandings || laLiga.loadingScorers, loadingDefenders: laLiga.loadingDefenders },
-    { id: 'epl', name: 'EPL', color: '#94a3b8', data: epl.data, loading: epl.loadingStandings || epl.loadingScorers, loadingDefenders: epl.loadingDefenders },
-    { id: 'serie-a', name: 'Serie A', color: '#94a3b8', data: serieA.data, loading: serieA.loadingStandings || serieA.loadingScorers, loadingDefenders: serieA.loadingDefenders },
-    { id: 'bundesliga', name: 'Bundesliga', color: '#94a3b8', data: bundesliga.data, loading: bundesliga.loadingStandings || bundesliga.loadingScorers, loadingDefenders: bundesliga.loadingDefenders },
-    { id: 'ligue-1', name: 'Ligue 1', color: '#94a3b8', data: ligue1.data, loading: ligue1.loadingStandings || ligue1.loadingScorers, loadingDefenders: ligue1.loadingDefenders },
+    { id: 'la-liga', name: 'La Liga', color: '#94a3b8', data: laLiga.data, loading: laLiga.loadingStandings || laLiga.loadingScorers },
+    { id: 'epl', name: 'EPL', color: '#94a3b8', data: epl.data, loading: epl.loadingStandings || epl.loadingScorers },
+    { id: 'serie-a', name: 'Serie A', color: '#94a3b8', data: serieA.data, loading: serieA.loadingStandings || serieA.loadingScorers },
+    { id: 'bundesliga', name: 'Bundesliga', color: '#94a3b8', data: bundesliga.data, loading: bundesliga.loadingStandings || bundesliga.loadingScorers },
+    { id: 'ligue-1', name: 'Ligue 1', color: '#94a3b8', data: ligue1.data, loading: ligue1.loadingStandings || ligue1.loadingScorers },
   ];
 
   const liveTeams: Team[] = liveLeagues.flatMap(league =>
@@ -151,39 +111,6 @@ export function TopStatsSection() {
     })),
   ).sort((a, b) => b.value - a.value).slice(0, 5);
 
-  // Defenders: ranked by rating (goals field holds rating for this list — see
-  // useLeagueData.ts toDefenderPlayer). Goalkeepers: ranked by clean sheets.
-  const liveDefenders: Player[] = liveLeagues.flatMap(league =>
-    league.data.topDefenders.map(player => ({
-      id: player.rank,
-      name: player.name,
-      team: player.team,
-      league: league.name,
-      leagueColor: league.color,
-      value: player.goals,
-      stat2: player.assists,
-      tacklesWon: player.tacklesWon,
-      interceptions: player.interceptions,
-      clearances: player.clearances,
-      minutesPlayed: player.minutesPlayed,
-    })),
-  ).sort((a, b) => b.value - a.value).slice(0, 5);
-
-  const liveKeepers: Player[] = liveLeagues.flatMap(league =>
-    league.data.topKeepers.map(player => ({
-      id: player.rank,
-      name: player.name,
-      team: player.team,
-      league: league.name,
-      leagueColor: league.color,
-      value: player.goals,
-      stat2: player.assists,
-      saves: player.saves,
-      savePercentage: player.savePercentage,
-      minutesPlayed: player.minutesPlayed,
-    })),
-  ).sort((a, b) => b.value - a.value).slice(0, 5);
-
   // Find the league standings for the overall points leader
   const overallLeaderTeam = liveTeams[0];
   const overallLeaderLeague = overallLeaderTeam
@@ -191,13 +118,9 @@ export function TopStatsSection() {
     : null;
   const overallLeaderStanding = overallLeaderLeague?.data.standings[0] ?? null;
 
-  const liveDataLoading = liveLeagues.some(league => league.loading);
-  const liveDefendersLoading = liveLeagues.some(league => league.loadingDefenders);
-  const displayTeams = liveTeams.length > 0 ? liveTeams : liveDataLoading ? topTeams : [];
-  const displayScorers = liveScorers.length > 0 ? liveScorers : liveDataLoading ? topScorers : [];
-  const displayAssists = liveAssists.length > 0 ? liveAssists : liveDataLoading ? topAssists : [];
-  const displayDefenders = liveDefenders.length > 0 ? liveDefenders : liveDefendersLoading ? topDefenders : [];
-  const displayKeepers = liveKeepers.length > 0 ? liveKeepers : liveDefendersLoading ? topKeepers : [];
+  // Only live data is shown. While requests are in flight the empty states
+  // say "Loading…"; afterwards they say "No current data".
+  const loading = liveLeagues.some(league => league.loading);
 
   const tabs = [
     { id: 'top5' as TabType, label: 'Top 5', icon: Trophy },
@@ -238,66 +161,71 @@ export function TopStatsSection() {
       <div className="p-4 sm:p-6">
         {activeTab === 'top5' && (
           <Top5Overview
-            teams={displayTeams}
-            scorers={displayScorers}
-            assists={displayAssists}
-            defenders={displayDefenders}
-            keepers={displayKeepers}
+            teams={liveTeams}
+            scorers={liveScorers}
+            assists={liveAssists}
             leaderStanding={overallLeaderStanding}
-            leaderLeagueColor={overallLeaderLeague?.color ?? '#666'}
+            leaderLeagueColor={overallLeaderLeague?.color ?? '#94a3b8'}
+            loading={loading}
           />
         )}
-        {activeTab === 'teams' && <TeamsList teams={displayTeams} />}
-        {activeTab === 'goals' && <PlayersList players={displayScorers} title="Top Scorers" subtitle="Goals / Assists" />}
-        {activeTab === 'assists' && <PlayersList players={displayAssists} title="Top Assists" subtitle="Assists / Goals" />}
-        {activeTab === 'defender' && (
-          displayDefenders.length > 0
-            ? <PlayersList players={displayDefenders} title="Top Defenders" subtitle="Rating / Clean Sheets" />
-            : <UnavailableStats title="Top Defenders" />
+        {activeTab === 'teams' && (
+          liveTeams.length > 0
+            ? <TeamsList teams={liveTeams} />
+            : <NoCurrentData title="Top 5 Teams Across All Leagues" loading={loading} />
         )}
-        {activeTab === 'gk' && (
-          displayKeepers.length > 0
-            ? <PlayersList players={displayKeepers} title="Top Goalkeepers" subtitle="Clean Sheets / Rating" />
-            : <UnavailableStats title="Top Goalkeepers" />
+        {activeTab === 'goals' && (
+          liveScorers.length > 0
+            ? <PlayersList players={liveScorers} title="Top Scorers" subtitle="Goals / Assists" />
+            : <NoCurrentData title="Top Scorers" loading={loading} />
         )}
+        {activeTab === 'assists' && (
+          liveAssists.length > 0
+            ? <PlayersList players={liveAssists} title="Top Assists" subtitle="Assists / Goals" />
+            : <NoCurrentData title="Top Assists" loading={loading} />
+        )}
+        {activeTab === 'defender' && <NoCurrentData title="Top Defenders" />}
+        {activeTab === 'gk' && <NoCurrentData title="Top Goalkeepers" />}
       </div>
     </div>
   );
 }
 
-function Top5Overview({ teams, scorers, assists, defenders, keepers, leaderStanding, leaderLeagueColor }: {
+function signed(n: number): string {
+  return n > 0 ? `+${n}` : `${n}`;
+}
+
+function SectionHeading({ icon: Icon, iconClass, title }: { icon: typeof Goal; iconClass: string; title: string }) {
+  return (
+    <div className="flex items-center gap-2 pb-3 border-b border-gray-800">
+      <Icon className={`w-4 h-4 ${iconClass}`} />
+      <h4 className="text-gray-100">{title}</h4>
+    </div>
+  );
+}
+
+function Top5Overview({ teams, scorers, assists, leaderStanding, leaderLeagueColor, loading }: {
   teams: Team[];
   scorers: Player[];
   assists: Player[];
-  defenders: Player[];
-  keepers: Player[];
   leaderStanding: import('../data/leagueData').Standing | null;
   leaderLeagueColor: string;
+  loading: boolean;
 }) {
-  const topTeams = teams.length > 0 ? teams : [{ id: 0, name: 'No current data', league: '', leagueColor: '#666', points: 0, wins: 0, draws: 0, losses: 0, gd: 0 }];
-  const topScorers = scorers.length > 0 ? scorers : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
-  const topAssists = assists.length > 0 ? assists : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
-  const topDefenders = defenders.length > 0 ? defenders : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
-  const topKeepers = keepers.length > 0 ? keepers : [{ id: 0, name: 'No current data', team: '', league: '', leagueColor: '#666', value: 0, stat2: 0 }];
-
-  // Derive live stats for the overall points leader
+  const topTeam = teams[0];
   const leader = leaderStanding;
-  const played = leader ? leader.played : (topTeams[0].wins + topTeams[0].draws + topTeams[0].losses);
-  const wins = leader ? leader.won : topTeams[0].wins;
-  const draws = leader ? leader.drawn : topTeams[0].draws;
-  const losses = leader ? leader.lost : topTeams[0].losses;
-  const points = leader ? leader.points : topTeams[0].points;
-  const gf = leader ? leader.gf : 0;
-  const ga = leader ? leader.ga : 0;
-  const ppm = played > 0 ? (points / played).toFixed(2) : '0.00';
-  const form = leader?.form ?? [];
-  const formColors: Record<string, string> = { W: '#22c55e', D: '#f59e0b', L: '#ef4444' };
+  const scorer = scorers[0];
+  const assister = assists[0];
   const color = leaderLeagueColor;
 
-  // Win/draw/loss distribution for pie chart
-  const winPct  = played > 0 ? Math.round((wins  / played) * 100) : 33;
-  const drawPct = played > 0 ? Math.round((draws / played) * 100) : 33;
-  const lossPct = played > 0 ? Math.max(0, 100 - winPct - drawPct) : 34;
+  const played = leader?.played ?? 0;
+  const ppm = leader && played > 0 ? (leader.points / played).toFixed(2) : null;
+  const formColors: Record<string, string> = { W: '#22c55e', D: '#f59e0b', L: '#ef4444' };
+
+  // Win/draw/loss distribution — only computed from real games played
+  const winPct  = played > 0 ? Math.round((leader!.won   / played) * 100) : 0;
+  const drawPct = played > 0 ? Math.round((leader!.drawn / played) * 100) : 0;
+  const lossPct = played > 0 ? Math.max(0, 100 - winPct - drawPct) : 0;
 
   return (
     <div className="space-y-8">
@@ -312,485 +240,321 @@ function Top5Overview({ teams, scorers, assists, defenders, keepers, leaderStand
       </div>
 
       {/* Leading Team Section */}
-      <div className="space-y-4">
-        {/* Hero banner */}
-        <div className="relative rounded-xl overflow-hidden" style={{ minHeight: 120, background: 'linear-gradient(135deg, #1f1f1f 0%, #141414 55%, #0d0d0d 100%)' }}>
-          <div className="relative z-10 p-5 flex flex-wrap items-center gap-4">
-            <ClubCrest club={topTeams[0].name} size={56} />
-            <div>
-              <p className="text-white text-xl font-bold">{topTeams[0].name}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <LeagueBadge league={topTeams[0].league} size={20} />
-                <p className="text-gray-300 text-sm">{topTeams[0].league}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-5 ml-auto">
-              <div className="text-center">
-                <p className="text-[11px] text-gray-400 mb-0.5">Points</p>
-                <p className="text-2xl font-bold text-white">{points}</p>
-              </div>
-              <div className="w-px h-10 bg-white/20" />
-              <div className="text-center">
-                <p className="text-[11px] text-gray-400 mb-0.5">GF</p>
-                <p className="text-2xl font-bold text-white">{gf || topTeams[0].gd + 'GD'}</p>
-              </div>
-              <div className="w-px h-10 bg-white/20" />
-              <div className="text-center">
-                <p className="text-[11px] text-gray-400 mb-0.5">Pts/Game</p>
-                <p className="text-2xl font-bold text-white">{ppm}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-blue-950/30 to-[#111111] rounded-lg border border-blue-900/30 p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-w-7xl">
-            {/* Form Card */}
-            <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <p className="text-sm text-gray-400">Recent Form</p>
-              </div>
-
-              <div className="mb-4">
-                <p className="text-xs text-gray-400 mb-2">Last {form.length > 0 ? form.length : 5} games</p>
-                <div className="flex items-center gap-1 mb-4">
-                  {form.length > 0
-                    ? form.map((f, i) => (
-                        <span key={i} className="w-6 h-6 rounded text-white text-xs flex items-center justify-center font-medium"
-                          style={{ backgroundColor: formColors[f] }}>{f}</span>
-                      ))
-                    : ['W','W','D','W','L'].map((f, i) => (
-                        <span key={i} className="w-6 h-6 rounded text-white text-xs flex items-center justify-center font-medium"
-                          style={{ backgroundColor: formColors[f] }}>{f}</span>
-                      ))
-                  }
-                </div>
-              </div>
-
-              {/* W/D/L breakdown pie */}
+      {topTeam && leader ? (
+        <div className="space-y-4">
+          {/* Hero banner */}
+          <div className="relative rounded-xl overflow-hidden" style={{ minHeight: 120, background: 'linear-gradient(135deg, #1f1f1f 0%, #141414 55%, #0d0d0d 100%)' }}>
+            <div className="relative z-10 p-5 flex flex-wrap items-center gap-4">
+              <ClubCrest club={topTeam.name} size={56} />
               <div>
-                <p className="text-xs text-gray-400 mb-2">Season record</p>
-                <div className="flex items-center gap-2">
-                  <PieChart width={60} height={60}>
-                    <Pie data={[{ value: winPct }, { value: drawPct }, { value: lossPct }]}
-                      cx={30} cy={30} startAngle={90} endAngle={-270}
-                      innerRadius={15} outerRadius={28} paddingAngle={2} dataKey="value">
-                      <Cell fill="#22c55e" /><Cell fill="#f59e0b" /><Cell fill="#ef4444" />
-                    </Pie>
-                  </PieChart>
-                  <div className="text-xs space-y-1">
-                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-gray-400">{winPct}% wins</span></div>
-                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-500" /><span className="text-gray-400">{drawPct}% draws</span></div>
-                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500" /><span className="text-gray-400">{lossPct}% losses</span></div>
-                  </div>
+                <p className="text-white text-xl font-bold">{topTeam.name}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <LeagueBadge league={topTeam.league} size={20} />
+                  <p className="text-gray-300 text-sm">{topTeam.league}</p>
                 </div>
               </div>
-            </div>
-
-            {/* League Statistics */}
-            <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <p className="text-sm text-gray-400">League Statistics</p>
-              </div>
-              <div className="space-y-2">
-                {[
-                  { label: 'Games Played', val: played,   cls: 'text-gray-200' },
-                  { label: 'Wins',         val: wins,     cls: 'text-green-500' },
-                  { label: 'Draws',        val: draws,    cls: 'text-yellow-500' },
-                  { label: 'Losses',       val: losses,   cls: 'text-red-500' },
-                ].map(r => (
-                  <div key={r.label} className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">{r.label}</span>
-                    <span className={`text-sm font-medium ${r.cls}`}>{r.val}</span>
-                  </div>
-                ))}
-                <div className="h-px bg-gray-800 my-2" />
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Points</span>
-                  <span className="text-lg font-medium" style={{ color }}>{points}</span>
+              <div className="flex items-center gap-5 ml-auto">
+                <div className="text-center">
+                  <p className="text-[11px] text-gray-400 mb-0.5">Points</p>
+                  <p className="text-2xl font-bold text-white">{leader.points}</p>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Pts/Match</span>
-                  <span className="text-lg font-medium text-blue-400">{ppm}</span>
+                <div className="w-px h-10 bg-white/20" />
+                <div className="text-center">
+                  <p className="text-[11px] text-gray-400 mb-0.5">GF</p>
+                  <p className="text-2xl font-bold text-white">{leader.gf}</p>
                 </div>
+                {ppm && (
+                  <>
+                    <div className="w-px h-10 bg-white/20" />
+                    <div className="text-center">
+                      <p className="text-[11px] text-gray-400 mb-0.5">Pts/Game</p>
+                      <p className="text-2xl font-bold text-white">{ppm}</p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
-
-            {/* Goal Difference breakdown */}
-            <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 rounded-full bg-purple-500" />
-                <p className="text-sm text-gray-400">Goal Record</p>
-              </div>
-              <div className="space-y-2">
-                {[
-                  { label: 'Goals Scored',   val: gf,               cls: 'text-green-400' },
-                  { label: 'Goals Conceded', val: ga,               cls: 'text-red-400'   },
-                  { label: 'Goal Diff',      val: `+${gf - ga}`,    cls: 'text-blue-400'  },
-                  { label: 'Goals/Game',     val: played > 0 ? (gf / played).toFixed(2) : '–', cls: 'text-gray-200' },
-                ].map(r => (
-                  <div key={r.label} className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">{r.label}</span>
-                    <span className={`text-sm font-medium ${r.cls}`}>{r.val}</span>
+          </div>
+          <div className="bg-gradient-to-br from-blue-950/30 to-[#111111] rounded-lg border border-blue-900/30 p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-w-7xl">
+              {/* Form Card — only real results */}
+              {(leader.form.length > 0 || played > 0) && (
+                <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <p className="text-sm text-gray-400">Recent Form</p>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Top Scorer quick summary */}
-            <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 rounded-full bg-orange-500" />
-                <p className="text-sm text-gray-400">Top Scorer</p>
-              </div>
-              {topScorers[0].name !== 'No current data' ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <PlayerAvatar name={topScorers[0].name} teamColor={topScorers[0].leagueColor} size={32} />
+                  {leader.form.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-xs text-gray-400 mb-2">Last {leader.form.length} games</p>
+                      <div className="flex items-center gap-1 mb-4">
+                        {leader.form.map((f, i) => (
+                          <span key={i} className="w-6 h-6 rounded text-white text-xs flex items-center justify-center font-medium"
+                            style={{ backgroundColor: formColors[f] }}>{f}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* W/D/L breakdown pie */}
+                  {played > 0 && (
                     <div>
-                      <p className="text-gray-200 text-xs font-semibold leading-tight">{topScorers[0].name}</p>
-                      <p className="text-gray-500 text-[10px]">{topScorers[0].team}</p>
+                      <p className="text-xs text-gray-400 mb-2">Season record</p>
+                      <div className="flex items-center gap-2">
+                        <PieChart width={60} height={60}>
+                          <Pie data={[{ value: winPct }, { value: drawPct }, { value: lossPct }]}
+                            cx={30} cy={30} startAngle={90} endAngle={-270}
+                            innerRadius={15} outerRadius={28} paddingAngle={2} dataKey="value">
+                            <Cell fill="#22c55e" /><Cell fill="#f59e0b" /><Cell fill="#ef4444" />
+                          </Pie>
+                        </PieChart>
+                        <div className="text-xs space-y-1">
+                          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-gray-400">{winPct}% wins</span></div>
+                          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-500" /><span className="text-gray-400">{drawPct}% draws</span></div>
+                          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500" /><span className="text-gray-400">{lossPct}% losses</span></div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-around">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold" style={{ color: topScorers[0].leagueColor }}>{topScorers[0].value}</p>
-                      <p className="text-[10px] text-gray-500">Goals</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-400">{topScorers[0].stat2}</p>
-                      <p className="text-[10px] text-gray-500">Assists</p>
-                    </div>
-                  </div>
-                  <div className="mt-1 text-center">
-                    <LeagueBadge league={topScorers[0].league} size={18} />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-20">
-                  <p className="text-sm text-gray-600 italic">Loading…</p>
+                  )}
                 </div>
               )}
-            </div>
 
-            {/* Top Assister quick summary */}
-            <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                <p className="text-sm text-gray-400">Top Assister</p>
+              {/* League Statistics */}
+              <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  <p className="text-sm text-gray-400">League Statistics</p>
+                </div>
+                <div className="space-y-2">
+                  {[
+                    { label: 'Games Played', val: leader.played, cls: 'text-gray-200' },
+                    { label: 'Wins', val: leader.won, cls: 'text-green-500' },
+                    { label: 'Draws', val: leader.drawn, cls: 'text-yellow-500' },
+                    { label: 'Losses', val: leader.lost, cls: 'text-red-500' },
+                  ].map(r => (
+                    <div key={r.label} className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">{r.label}</span>
+                      <span className={`text-sm font-medium ${r.cls}`}>{r.val}</span>
+                    </div>
+                  ))}
+                  <div className="h-px bg-gray-800 my-2" />
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Points</span>
+                    <span className="text-lg font-medium" style={{ color }}>{leader.points}</span>
+                  </div>
+                  {ppm && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">Pts/Match</span>
+                      <span className="text-lg font-medium text-blue-400">{ppm}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              {topAssists[0].name !== 'No current data' ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <PlayerAvatar name={topAssists[0].name} teamColor={topAssists[0].leagueColor} size={32} />
-                    <div>
-                      <p className="text-gray-200 text-xs font-semibold leading-tight">{topAssists[0].name}</p>
-                      <p className="text-gray-500 text-[10px]">{topAssists[0].team}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-around">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold" style={{ color: topAssists[0].leagueColor }}>{topAssists[0].value}</p>
-                      <p className="text-[10px] text-gray-500">Assists</p>
-                    </div>
-                    <div className="flex flex-col items-center justify-center">
-                      <p className="text-2xl font-bold text-gray-400">{topAssists[0].stat2}</p>
-                      <p className="text-[10px] text-gray-500">Goals</p>
-                    </div>
-                  </div>
-                  <div className="mt-1 text-center">
-                    <LeagueBadge league={topAssists[0].league} size={18} />
-                  </div>
+
+              {/* Goal Difference breakdown */}
+              <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-purple-500" />
+                  <p className="text-sm text-gray-400">Goal Record</p>
                 </div>
-              ) : (
-                <div className="flex items-center justify-center h-20">
-                  <p className="text-sm text-gray-600 italic">Loading…</p>
+                <div className="space-y-2">
+                  {[
+                    { label: 'Goals Scored', val: leader.gf, cls: 'text-green-400' },
+                    { label: 'Goals Conceded', val: leader.ga, cls: 'text-red-400' },
+                    { label: 'Goal Diff', val: signed(leader.gf - leader.ga), cls: 'text-blue-400' },
+                    { label: 'Goals/Game', val: played > 0 ? (leader.gf / played).toFixed(2) : '–', cls: 'text-gray-200' },
+                  ].map(r => (
+                    <div key={r.label} className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">{r.label}</span>
+                      <span className={`text-sm font-medium ${r.cls}`}>{r.val}</span>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
+
+              {/* Top Scorer quick summary */}
+              <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-orange-500" />
+                  <p className="text-sm text-gray-400">Top Scorer</p>
+                </div>
+                {scorer ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <PlayerAvatar name={scorer.name} teamColor={scorer.leagueColor} size={32} />
+                      <div>
+                        <p className="text-gray-200 text-xs font-semibold leading-tight">{scorer.name}</p>
+                        <p className="text-gray-500 text-[10px]">{scorer.team}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-around">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold" style={{ color: scorer.leagueColor }}>{scorer.value}</p>
+                        <p className="text-[10px] text-gray-500">Goals</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-gray-400">{scorer.stat2}</p>
+                        <p className="text-[10px] text-gray-500">Assists</p>
+                      </div>
+                    </div>
+                    <div className="mt-1 text-center">
+                      <LeagueBadge league={scorer.league} size={18} />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 h-20 flex items-center justify-center">{loading ? 'Loading…' : NO_CURRENT_DATA}</p>
+                )}
+              </div>
+
+              {/* Top Assister quick summary */}
+              <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                  <p className="text-sm text-gray-400">Top Assister</p>
+                </div>
+                {assister ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <PlayerAvatar name={assister.name} teamColor={assister.leagueColor} size={32} />
+                      <div>
+                        <p className="text-gray-200 text-xs font-semibold leading-tight">{assister.name}</p>
+                        <p className="text-gray-500 text-[10px]">{assister.team}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-around">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold" style={{ color: assister.leagueColor }}>{assister.value}</p>
+                        <p className="text-[10px] text-gray-500">Assists</p>
+                      </div>
+                      <div className="flex flex-col items-center justify-center">
+                        <p className="text-2xl font-bold text-gray-400">{assister.stat2}</p>
+                        <p className="text-[10px] text-gray-500">Goals</p>
+                      </div>
+                    </div>
+                    <div className="mt-1 text-center">
+                      <LeagueBadge league={assister.league} size={18} />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 h-20 flex items-center justify-center">{loading ? 'Loading…' : NO_CURRENT_DATA}</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <NoCurrentData title="Leading team" loading={loading} />
+      )}
 
       {/* Top Scorer Section */}
       <div className="space-y-4">
-        <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
-          <PlayerAvatar name={topScorers[0].name} teamColor={topScorers[0].leagueColor} size={44} />
-          <ClubCrest club={topScorers[0].team} size={36} />
-          <div>
-            <div className="flex items-center gap-2">
-              <Goal className="w-4 h-4 text-green-600" />
-              <h4 className="text-gray-100">Top Scorer</h4>
+        {scorer ? (
+          <>
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+              <PlayerAvatar name={scorer.name} teamColor={scorer.leagueColor} size={44} />
+              <ClubCrest club={scorer.team} size={36} />
+              <div>
+                <div className="flex items-center gap-2">
+                  <Goal className="w-4 h-4 text-green-600" />
+                  <h4 className="text-gray-100">Top Scorer</h4>
+                </div>
+                <p className="text-sm text-gray-400">{scorer.name} • {scorer.team}</p>
+              </div>
+              <div className="ml-auto">
+                <LeagueBadge league={scorer.league} size={28} />
+              </div>
             </div>
-            <p className="text-sm text-gray-400">{topScorers[0].name} • {topScorers[0].team}</p>
-          </div>
-          <div className="ml-auto">
-            <LeagueBadge league={topScorers[0].league} size={28} />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-gradient-to-br from-green-950/40 to-[#1a1a1a] p-4 rounded-lg border border-green-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topScorers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Goals</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { label: 'Goals',           val: scorer.value,                       max: 25 },
+                { label: 'Assists',         val: scorer.stat2 ?? 0,                  max: 30 },
+                { label: 'Goals + Assists', val: scorer.value + (scorer.stat2 ?? 0), max: 35 },
+              ].map(({ label, val, max }) => (
+                <div key={label} className="bg-gradient-to-br from-green-950/40 to-[#1a1a1a] p-4 rounded-lg border border-green-900/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: scorer.leagueColor }} />
+                    <p className="text-xs text-gray-400">{label}</p>
+                  </div>
+                  <p className="text-3xl font-light text-white">{val}</p>
+                  <div className="mt-3 w-full bg-green-900/40 rounded-full h-2">
+                    <div className="bg-green-600 h-2 rounded-full" style={{ width: `${Math.min((val / max) * 100, 100)}%` }} />
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className="text-3xl font-light text-white">{topScorers[0].value}</p>
-            <div className="mt-3 w-full bg-green-900/40 rounded-full h-2">
-              <div className="bg-green-600 h-2 rounded-full" style={{ width: `${(topScorers[0].value / 25) * 100}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-green-950/40 to-[#1a1a1a] p-4 rounded-lg border border-green-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topScorers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Assists</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topScorers[0].stat2}</p>
-            <div className="mt-3 w-full bg-green-900/40 rounded-full h-2">
-              <div className="bg-green-600 h-2 rounded-full" style={{ width: `${(topScorers[0].stat2! / 30) * 100}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-green-950/40 to-[#1a1a1a] p-4 rounded-lg border border-green-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topScorers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Goals + Assists</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topScorers[0].value + (topScorers[0].stat2 ?? 0)}</p>
-            <div className="mt-3 w-full bg-green-900/40 rounded-full h-2">
-              <div className="bg-green-600 h-2 rounded-full" style={{ width: `${((topScorers[0].value + (topScorers[0].stat2 ?? 0)) / 35) * 100}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-green-950/40 to-[#1a1a1a] p-4 rounded-lg border border-green-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topScorers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Goal Contributions</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topScorers[0].value + (topScorers[0].stat2 ?? 0)}</p>
-            <div className="mt-3 w-full bg-green-900/40 rounded-full h-2">
-              <div className="bg-green-600 h-2 rounded-full" style={{ width: `${((topScorers[0].value + (topScorers[0].stat2 ?? 0)) / 35) * 100}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-green-950/40 to-[#1a1a1a] p-4 rounded-lg border border-green-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topScorers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Goals Rank</p>
-            </div>
-            <p className="text-3xl font-light text-white">#1</p>
-            <div className="mt-3 w-full bg-green-900/40 rounded-full h-2">
-              <div className="bg-green-600 h-2 rounded-full" style={{ width: '100%' }} />
-            </div>
-          </div>
-        </div>
+          </>
+        ) : (
+          <>
+            <SectionHeading icon={Goal} iconClass="text-green-600" title="Top Scorer" />
+            <NoCurrentData loading={loading} />
+          </>
+        )}
       </div>
 
       {/* Top Assister Section */}
       <div className="space-y-4">
-        <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
-          <PlayerAvatar name={topAssists[0].name} teamColor={topAssists[0].leagueColor} size={44} />
-          <ClubCrest club={topAssists[0].team} size={36} />
-          <div>
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-purple-600" />
-              <h4 className="text-gray-100">Top Assister</h4>
+        {assister ? (
+          <>
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+              <PlayerAvatar name={assister.name} teamColor={assister.leagueColor} size={44} />
+              <ClubCrest club={assister.team} size={36} />
+              <div>
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-purple-600" />
+                  <h4 className="text-gray-100">Top Assister</h4>
+                </div>
+                <p className="text-sm text-gray-400">{assister.name} • {assister.team}</p>
+              </div>
+              <div className="ml-auto">
+                <LeagueBadge league={assister.league} size={28} />
+              </div>
             </div>
-            <p className="text-sm text-gray-400">{topAssists[0].name} • {topAssists[0].team}</p>
-          </div>
-          <div className="ml-auto">
-            <LeagueBadge league={topAssists[0].league} size={28} />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topAssists[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Assists</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: 'Assists',            val: assister.value,                         max: 15 },
+                { label: 'Goals',              val: assister.stat2 ?? 0,                    max: 25 },
+                { label: 'Goal Contributions', val: assister.value + (assister.stat2 ?? 0), max: 35 },
+              ].map(({ label, val, max }) => (
+                <div key={label} className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: assister.leagueColor }} />
+                    <p className="text-xs text-gray-400">{label}</p>
+                  </div>
+                  <p className="text-3xl font-light text-white">{val}</p>
+                  <div className="mt-3 w-full bg-purple-900/40 rounded-full h-2">
+                    <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${Math.min((val / max) * 100, 100)}%` }} />
+                  </div>
+                </div>
+              ))}
+              <div className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: assister.leagueColor }} />
+                  <p className="text-xs text-gray-400">League</p>
+                </div>
+                <div className="mt-2">
+                  <LeagueBadge league={assister.league} size={32} />
+                </div>
+                <p className="text-xs text-gray-400 mt-2">{assister.league}</p>
+              </div>
             </div>
-            <p className="text-3xl font-light text-white">{topAssists[0].value}</p>
-            <div className="mt-3 w-full bg-purple-900/40 rounded-full h-2">
-              <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${(topAssists[0].value / 15) * 100}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topAssists[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Goals</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topAssists[0].stat2}</p>
-            <div className="mt-3 w-full bg-purple-900/40 rounded-full h-2">
-              <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${((topAssists[0].stat2 ?? 0) / 25) * 100}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topAssists[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Goal Contributions</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topAssists[0].value + (topAssists[0].stat2 ?? 0)}</p>
-            <div className="mt-3 w-full bg-purple-900/40 rounded-full h-2">
-              <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${((topAssists[0].value + (topAssists[0].stat2 ?? 0)) / 35) * 100}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topAssists[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Assists Rank</p>
-            </div>
-            <p className="text-3xl font-light text-white">#1</p>
-            <div className="mt-3 w-full bg-purple-900/40 rounded-full h-2">
-              <div className="bg-purple-600 h-2 rounded-full" style={{ width: '100%' }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topAssists[0].leagueColor }} />
-              <p className="text-xs text-gray-400">League</p>
-            </div>
-            <div className="mt-2">
-              <LeagueBadge league={topAssists[0].league} size={32} />
-            </div>
-            <p className="text-xs text-gray-400 mt-2">{topAssists[0].league}</p>
-          </div>
-        </div>
+          </>
+        ) : (
+          <>
+            <SectionHeading icon={Activity} iconClass="text-purple-600" title="Top Assister" />
+            <NoCurrentData loading={loading} />
+          </>
+        )}
       </div>
 
-      {/* Top Defender Section */}
+      {/* Defender and goalkeeper: no data provider for these yet */}
       <div className="space-y-4">
-        <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
-          <PlayerAvatar name={topDefenders[0].name} teamColor={topDefenders[0].leagueColor} size={44} />
-          <ClubCrest club={topDefenders[0].team} size={36} />
-          <div>
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-orange-600" />
-              <h4 className="text-gray-100">Top Defender</h4>
-            </div>
-            <p className="text-sm text-gray-400">{topDefenders[0].name} • {topDefenders[0].team}</p>
-          </div>
-          <div className="ml-auto">
-            <LeagueBadge league={topDefenders[0].league} size={28} />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-gradient-to-br from-orange-950/40 to-[#1a1a1a] p-4 rounded-lg border border-orange-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topDefenders[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Rating</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topDefenders[0].value.toFixed(1)}</p>
-            <div className="mt-3 w-full bg-orange-900/40 rounded-full h-2">
-              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${Math.min(Math.max(((topDefenders[0].value - 6) / 4) * 100, 0), 100)}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-orange-950/40 to-[#1a1a1a] p-4 rounded-lg border border-orange-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topDefenders[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Clean Sheets</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topDefenders[0].stat2}</p>
-            <div className="mt-3 w-full bg-orange-900/40 rounded-full h-2">
-              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${(topDefenders[0].stat2! / 12) * 100}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-orange-950/40 to-[#1a1a1a] p-4 rounded-lg border border-orange-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topDefenders[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Tackles Won</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topDefenders[0].tacklesWon ?? 67}</p>
-            <div className="mt-3 w-full bg-orange-900/40 rounded-full h-2">
-              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${((topDefenders[0].tacklesWon ?? 67) / 80) * 100}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-orange-950/40 to-[#1a1a1a] p-4 rounded-lg border border-orange-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topDefenders[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Interceptions</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topDefenders[0].interceptions ?? 52}</p>
-            <div className="mt-3 w-full bg-orange-900/40 rounded-full h-2">
-              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${((topDefenders[0].interceptions ?? 52) / 70) * 100}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-orange-950/40 to-[#1a1a1a] p-4 rounded-lg border border-orange-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topDefenders[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Clearances</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topDefenders[0].clearances ?? 89}</p>
-            <div className="mt-3 w-full bg-orange-900/40 rounded-full h-2">
-              <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${((topDefenders[0].clearances ?? 89) / 110) * 100}%` }} />
-            </div>
-          </div>
-        </div>
+        <SectionHeading icon={Shield} iconClass="text-orange-600" title="Top Defender" />
+        <NoCurrentData />
       </div>
-
-      {/* Top Goalkeeper Section */}
       <div className="space-y-4">
-        <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
-          <PlayerAvatar name={topKeepers[0].name} teamColor={topKeepers[0].leagueColor} size={44} />
-          <ClubCrest club={topKeepers[0].team} size={36} />
-          <div>
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-indigo-600" />
-              <h4 className="text-gray-100">Top Goalkeeper</h4>
-            </div>
-            <p className="text-sm text-gray-400">{topKeepers[0].name} • {topKeepers[0].team}</p>
-          </div>
-          <div className="ml-auto">
-            <LeagueBadge league={topKeepers[0].league} size={28} />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-gradient-to-br from-indigo-950/40 to-[#1a1a1a] p-4 rounded-lg border border-indigo-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topKeepers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Clean Sheets</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topKeepers[0].value}</p>
-            <div className="mt-3 w-full bg-indigo-900/40 rounded-full h-2">
-              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${(topKeepers[0].value / 17) * 100}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-indigo-950/40 to-[#1a1a1a] p-4 rounded-lg border border-indigo-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topKeepers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Rating</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topKeepers[0].stat2!.toFixed(1)}</p>
-            <div className="mt-3 w-full bg-indigo-900/40 rounded-full h-2">
-              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${Math.min(Math.max(((topKeepers[0].stat2! - 6) / 4) * 100, 0), 100)}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-indigo-950/40 to-[#1a1a1a] p-4 rounded-lg border border-indigo-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topKeepers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Saves</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topKeepers[0].saves ?? 78}</p>
-            <div className="mt-3 w-full bg-indigo-900/40 rounded-full h-2">
-              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${((topKeepers[0].saves ?? 78) / 100) * 100}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-indigo-950/40 to-[#1a1a1a] p-4 rounded-lg border border-indigo-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topKeepers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Save %</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topKeepers[0].savePercentage ?? 76}%</p>
-            <div className="mt-3 w-full bg-indigo-900/40 rounded-full h-2">
-              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${topKeepers[0].savePercentage ?? 76}%` }} />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-indigo-950/40 to-[#1a1a1a] p-4 rounded-lg border border-indigo-900/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: topKeepers[0].leagueColor }} />
-              <p className="text-xs text-gray-400">Minutes Played</p>
-            </div>
-            <p className="text-3xl font-light text-white">{topKeepers[0].minutesPlayed ?? 1530}</p>
-            <div className="mt-3 w-full bg-indigo-900/40 rounded-full h-2">
-              <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${((topKeepers[0].minutesPlayed ?? 1530) / 1800) * 100}%` }} />
-            </div>
-          </div>
-        </div>
+        <SectionHeading icon={Hand} iconClass="text-indigo-600" title="Top Goalkeeper" />
+        <NoCurrentData />
       </div>
     </div>
   );
@@ -927,7 +691,7 @@ function PlayersList({ players, title, subtitle }: { players: Player[]; title: s
         const isTop3 = index < 3;
         return (
           <div
-            key={player.id}
+            key={`${player.league}-${player.id}`}
             className={`grid items-center gap-2 px-3 py-3 rounded-lg border transition-colors
               ${isTop3
                 ? `bg-gradient-to-br ${accentFrom} to-[#1a1a1a] ${accentBorder} hover:brightness-110`
@@ -1015,5 +779,5 @@ function LiveLeaderCard({ title, player, primaryLabel, primaryValue, secondaryLa
 }
 
 function UnavailableStats({ title }: { title: string }) {
-  return <div className="bg-[#1a1a1a] rounded-lg border border-gray-800 p-5"><p className="text-gray-300 font-medium">{title}</p><p className="text-sm text-gray-500 mt-2">Current 2026/27 data is unavailable from the configured API plan.</p></div>;
+  return <NoCurrentData title={title} />;
 }

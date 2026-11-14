@@ -4,7 +4,8 @@ import { PieChart, Pie, Cell } from 'recharts';
 import { ClubCrest } from './ClubCrest';
 import { LeagueBadge } from './LeagueBadge';
 import { MatchCard } from './MatchCard';
-import { LEAGUE_DATA, type LeagueData, type Player, type FormResult } from '../data/leagueData';
+import { NoCurrentData } from './NoCurrentData';
+import { LEAGUES, type LeagueData, type Player, type FormResult } from '../data/leagueData';
 import { useLeagueData } from '../hooks/useLeagueData';
 import { useMatches } from '../hooks/useMatches';
 import type { NormalizedMatch } from '../services/footballDataService';
@@ -17,6 +18,10 @@ interface League {
 }
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
+
+function signed(n: number): string {
+  return n > 0 ? `+${n}` : `${n}`;
+}
 
 function PlayerAvatar({ name, teamColor, size = 40 }: { name: string; teamColor: string; size?: number }) {
   const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -48,43 +53,48 @@ function FormBadge({ result }: { result: FormResult }) {
   );
 }
 
+function SectionHeading({ icon: Icon, iconClass, title }: { icon: typeof Goal; iconClass: string; title: string }) {
+  return (
+    <div className="flex items-center gap-2 pb-3 border-b border-gray-800">
+      <Icon className={`w-4 h-4 ${iconClass}`} />
+      <h4 className="text-gray-100">{title}</h4>
+    </div>
+  );
+}
+
 // ── Match strip (mirrors one MatchesSection league group) ────────────────────
 
 function LeagueMatchStrip({
   data,
   league,
   liveMatches,
+  loading,
 }: {
   data: LeagueData;
   league: League;
   liveMatches?: NormalizedMatch[];
+  loading: boolean;
 }) {
-  const isLive = liveMatches && liveMatches.length > 0;
-  const hasLiveStatus = isLive && liveMatches!.some(m => m.status === 'live');
-
-  const cards = isLive
-    ? liveMatches!.map(m => ({
-        id: m.id, homeTeam: m.homeTeam, awayTeam: m.awayTeam,
-        homeScore: m.homeScore, awayScore: m.awayScore,
-        status: m.status, minute: m.minute ?? undefined, time: m.time,
-        league: league.name, leagueColor: league.color,
-      }))
-    : data.matches.map(m => ({
-        id: m.id, homeTeam: m.homeTeam, awayTeam: m.awayTeam,
-        homeScore: m.homeScore ?? null, awayScore: m.awayScore ?? null,
-        status: m.status, minute: m.minute, time: m.time,
-        league: league.name, leagueColor: league.color,
-      }));
+  const cards = (liveMatches ?? []).map(m => ({
+    id: m.id, homeTeam: m.homeTeam, awayTeam: m.awayTeam,
+    homeScore: m.homeScore, awayScore: m.awayScore,
+    status: m.status, minute: m.minute ?? undefined, time: m.time,
+    league: league.name, leagueColor: league.color,
+  }));
+  const isLive = cards.length > 0;
+  const hasLiveStatus = cards.some(m => m.status === 'live');
 
   return (
     <div className="bg-[#0d0d0d] border-b border-gray-900">
       <div className="max-w-[1800px] mx-auto">
-        {/* Stadium header */}
+        {/* League header */}
         <div className="relative h-14 overflow-hidden flex items-center px-4 sm:px-6 lg:px-8" style={{ background: 'linear-gradient(to right, #1a1a1a 0%, #141414 55%, #0d0d0d 100%)' }}>
           <div className="relative z-10 flex items-center gap-3">
             <LeagueBadge league={league.name} size={32} />
             <span className="text-white font-bold text-sm">{league.name}</span>
-            <span className="text-gray-400 text-xs">· Matchday {data.currentMatchday}</span>
+            {data.currentMatchday !== null && (
+              <span className="text-gray-400 text-xs">· Matchday {data.currentMatchday}</span>
+            )}
           </div>
           <div className="ml-auto relative z-10 flex items-center gap-2">
             {isLive ? (
@@ -100,17 +110,21 @@ function LeagueMatchStrip({
             ) : (
               <WifiOff className="w-3 h-3 text-gray-600" />
             )}
-            <span className="text-gray-500 text-xs">{cards.length} matches</span>
+            {isLive && <span className="text-gray-500 text-xs">{cards.length} matches</span>}
           </div>
         </div>
 
         {/* Compact match cards */}
         <div className="px-4 sm:px-6 lg:px-8 py-3 overflow-x-auto scrollbar-hide">
-          <div className="flex gap-3">
-            {cards.map(m => (
-              <MatchCard key={m.id} match={m as any} compact />
-            ))}
-          </div>
+          {isLive ? (
+            <div className="flex gap-3">
+              {cards.map(m => (
+                <MatchCard key={m.id} match={m as any} compact />
+              ))}
+            </div>
+          ) : (
+            <NoCurrentData title="Matches" loading={loading} compact />
+          )}
         </div>
       </div>
     </div>
@@ -119,14 +133,17 @@ function LeagueMatchStrip({
 
 // ── Top5 overview tab ────────────────────────────────────────────────────────
 
-function LeagueTop5Overview({ data, league, topTeamScorer }: { data: LeagueData; league: League; topTeamScorer?: Player | null }) {
+function LeagueTop5Overview({ data, league, topTeamScorer, loading }: {
+  data: LeagueData;
+  league: League;
+  topTeamScorer?: Player | null;
+  loading: boolean;
+}) {
   const leader = data.standings[0];
   const scorer = data.topScorers[0];
-  const leaderScorer = topTeamScorer ?? data.topScorers.find(player => player.team === leader?.team) ?? scorer;
+  const leaderScorer = topTeamScorer ?? scorer;
   const assister = data.topAssisters[0];
-  const defender = data.topDefenders[0];
-  const keeper = data.topKeepers[0];
-  const ppm = leader ? (leader.points / leader.played).toFixed(2) : '0.00';
+  const ppm = leader && leader.played > 0 ? (leader.points / leader.played).toFixed(2) : null;
 
   return (
     <div className="space-y-8">
@@ -139,7 +156,7 @@ function LeagueTop5Overview({ data, league, topTeamScorer }: { data: LeagueData;
       </div>
 
       {/* ── Leader hero ── */}
-      {leader && (
+      {leader ? (
         <div className="space-y-4">
           <div className="relative rounded-xl overflow-hidden" style={{ minHeight: 120, background: 'linear-gradient(135deg, #1f1f1f 0%, #141414 55%, #0d0d0d 100%)' }}>
             <div className="relative z-10 p-5 flex flex-wrap items-center gap-4">
@@ -159,13 +176,17 @@ function LeagueTop5Overview({ data, league, topTeamScorer }: { data: LeagueData;
                 <div className="w-px h-10 bg-white/20" />
                 <div className="text-center">
                   <p className="text-[11px] text-gray-400 mb-0.5">GD</p>
-                  <p className="text-2xl font-bold text-white">+{leader.gd}</p>
+                  <p className="text-2xl font-bold text-white">{signed(leader.gd)}</p>
                 </div>
-                <div className="w-px h-10 bg-white/20" />
-                <div className="text-center">
-                  <p className="text-[11px] text-gray-400 mb-0.5">Pts/Game</p>
-                  <p className="text-2xl font-bold text-white">{ppm}</p>
-                </div>
+                {ppm && (
+                  <>
+                    <div className="w-px h-10 bg-white/20" />
+                    <div className="text-center">
+                      <p className="text-[11px] text-gray-400 mb-0.5">Pts/Game</p>
+                      <p className="text-2xl font-bold text-white">{ppm}</p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -175,37 +196,43 @@ function LeagueTop5Overview({ data, league, topTeamScorer }: { data: LeagueData;
             style={{ background: `linear-gradient(135deg, ${league.color}12 0%, #111111 60%)`, borderColor: `${league.color}30` }}
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-w-7xl">
-              {/* Recent form */}
-              <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: league.color }} />
-                  <p className="text-sm text-gray-400">Recent Form</p>
-                </div>
-                <p className="text-xs text-gray-400 mb-2">Last 5 games</p>
-                <div className="flex items-center gap-1 mb-4">
-                  {leader.form.map((f, i) => <FormBadge key={i} result={f} />)}
-                </div>
-                {leader && (
-                  <div className="mb-4">
-                    <p className="text-xs text-gray-400 mb-2">W / D / L</p>
-                    <div className="flex items-center gap-2">
-                      <PieChart width={60} height={60}>
-                        <Pie data={[{ value: leader.won }, { value: leader.drawn }, { value: leader.lost }]} cx={30} cy={30}
-                          startAngle={90} endAngle={-270} innerRadius={15} outerRadius={28} paddingAngle={2} dataKey="value">
-                          <Cell fill="#22c55e" /><Cell fill="#eab308" /><Cell fill="#ef4444" />
-                        </Pie>
-                      </PieChart>
-                      <div className="text-xs space-y-1">
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-gray-400">{Math.round((leader.won / leader.played) * 100)}% W</span></div>
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-500" /><span className="text-gray-400">{Math.round((leader.drawn / leader.played) * 100)}% D</span></div>
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500" /><span className="text-gray-400">{Math.round((leader.lost / leader.played) * 100)}% L</span></div>
+              {/* Recent form and W/D/L — only from real results */}
+              {(leader.form.length > 0 || leader.played > 0) && (
+                <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: league.color }} />
+                    <p className="text-sm text-gray-400">Recent Form</p>
+                  </div>
+                  {leader.form.length > 0 && (
+                    <>
+                      <p className="text-xs text-gray-400 mb-2">Last {leader.form.length} games</p>
+                      <div className="flex items-center gap-1 mb-4">
+                        {leader.form.map((f, i) => <FormBadge key={i} result={f} />)}
+                      </div>
+                    </>
+                  )}
+                  {leader.played > 0 && (
+                    <div className="mb-4">
+                      <p className="text-xs text-gray-400 mb-2">W / D / L</p>
+                      <div className="flex items-center gap-2">
+                        <PieChart width={60} height={60}>
+                          <Pie data={[{ value: leader.won }, { value: leader.drawn }, { value: leader.lost }]} cx={30} cy={30}
+                            startAngle={90} endAngle={-270} innerRadius={15} outerRadius={28} paddingAngle={2} dataKey="value">
+                            <Cell fill="#22c55e" /><Cell fill="#eab308" /><Cell fill="#ef4444" />
+                          </Pie>
+                        </PieChart>
+                        <div className="text-xs space-y-1">
+                          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-gray-400">{Math.round((leader.won / leader.played) * 100)}% W</span></div>
+                          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-500" /><span className="text-gray-400">{Math.round((leader.drawn / leader.played) * 100)}% D</span></div>
+                          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500" /><span className="text-gray-400">{Math.round((leader.lost / leader.played) * 100)}% L</span></div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
-              {/* League stats */}
+              {/* Leader record */}
               <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-2 h-2 rounded-full bg-blue-500" />
@@ -228,65 +255,67 @@ function LeagueTop5Overview({ data, league, topTeamScorer }: { data: LeagueData;
                     <span className="text-xs text-gray-500">Points</span>
                     <span className="text-lg font-medium" style={{ color: league.color }}>{leader.points}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">Pts/Match</span>
-                    <span className="text-lg font-medium text-blue-400">{ppm}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Season stats */}
-              <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2 h-2 rounded-full bg-purple-500" />
-                  <p className="text-sm text-gray-400">Season Stats</p>
-                </div>
-                <div className="space-y-2">
-                  {[
-                    { label: 'Total Goals',   val: data.stats.totalGoals },
-                    { label: 'Goals/Game',    val: data.stats.goalsPerGame.toFixed(2) },
-                    { label: 'Matchday',      val: `${data.currentMatchday}/${data.totalMatchdays}` },
-                    { label: 'Home Win %',    val: `${data.stats.homeWinPct}%` },
-                  ].map(r => (
-                    <div key={r.label} className="flex justify-between items-center">
-                      <span className="text-xs text-gray-500">{r.label}</span>
-                      <span className="text-sm font-medium text-gray-200">{r.val}</span>
+                  {ppm && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">Pts/Match</span>
+                      <span className="text-lg font-medium text-blue-400">{ppm}</span>
                     </div>
-                  ))}
-                  <div className="h-px bg-gray-800 my-1" />
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">Clubs</span>
-                    <span className="text-lg font-medium text-purple-400">{data.totalClubs}</span>
-                  </div>
+                  )}
                 </div>
               </div>
 
-              {/* Goal record */}
-              {leader && (
+              {/* Season totals, derived from the live table */}
+              {data.stats && (
                 <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <p className="text-sm text-gray-400">Goal Record</p>
+                    <div className="w-2 h-2 rounded-full bg-purple-500" />
+                    <p className="text-sm text-gray-400">Season Stats</p>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {[
-                      { label: 'Goals For',     val: leader.gf,  pct: Math.min((leader.gf / 80) * 100, 100),  cls: 'bg-green-500',  textCls: 'text-green-400' },
-                      { label: 'Goals Against', val: leader.ga,  pct: Math.min((leader.ga / 50) * 100, 100),  cls: 'bg-red-500',    textCls: 'text-red-400' },
-                      { label: 'Goal Diff',     val: `+${leader.gd}`, pct: Math.min((leader.gd / 50) * 100, 100), cls: 'bg-blue-500', textCls: 'text-blue-400' },
+                      { label: 'Total Goals',    val: data.stats.totalGoals },
+                      { label: 'Goals/Game',     val: data.stats.goalsPerGame.toFixed(2) },
+                      { label: 'Matches Played', val: data.stats.matchesPlayed },
+                      ...(data.currentMatchday !== null ? [{ label: 'Matchday', val: data.currentMatchday }] : []),
                     ].map(r => (
-                      <div key={r.label}>
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-xs text-gray-400">{r.label}</span>
-                          <span className={`text-sm font-medium ${r.textCls}`}>{r.val}</span>
-                        </div>
-                        <div className="w-full bg-gray-700 rounded-full h-1.5">
-                          <div className={`${r.cls} h-1.5 rounded-full`} style={{ width: `${r.pct}%` }} />
-                        </div>
+                      <div key={r.label} className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">{r.label}</span>
+                        <span className="text-sm font-medium text-gray-200">{r.val}</span>
                       </div>
                     ))}
+                    <div className="h-px bg-gray-800 my-1" />
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">Clubs</span>
+                      <span className="text-lg font-medium text-purple-400">{data.standings.length}</span>
+                    </div>
                   </div>
                 </div>
               )}
+
+              {/* Goal record */}
+              <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                  <p className="text-sm text-gray-400">Goal Record</p>
+                </div>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Goals For',     val: leader.gf,         pct: Math.min((leader.gf / 80) * 100, 100), cls: 'bg-green-500', textCls: 'text-green-400' },
+                    { label: 'Goals Against', val: leader.ga,         pct: Math.min((leader.ga / 50) * 100, 100), cls: 'bg-red-500',   textCls: 'text-red-400' },
+                    { label: 'Goal Diff',     val: signed(leader.gd), pct: Math.min(Math.max((leader.gd / 50) * 100, 0), 100), cls: 'bg-blue-500', textCls: 'text-blue-400' },
+                  ].map(r => (
+                    <div key={r.label}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-400">{r.label}</span>
+                        <span className={`text-sm font-medium ${r.textCls}`}>{r.val}</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-1.5">
+                        <div className={`${r.cls} h-1.5 rounded-full`} style={{ width: `${r.pct}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* Top scorer quick card */}
               {leaderScorer && (
@@ -317,291 +346,209 @@ function LeagueTop5Overview({ data, league, topTeamScorer }: { data: LeagueData;
             </div>
           </div>
         </div>
+      ) : (
+        <NoCurrentData title="League leader" loading={loading} />
       )}
 
       {/* ── Top Scorer section ── */}
-      {scorer && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-gray-800">
-            <PlayerAvatar name={scorer.name} teamColor={league.color} size={44} />
-            <ClubCrest club={scorer.team} size={36} />
-            <div>
-              <div className="flex items-center gap-2">
-                <Goal className="w-4 h-4 text-green-500" />
-                <h4 className="text-gray-100">Top Scorer</h4>
+      <div className="space-y-4">
+        {scorer ? (
+          <>
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-800">
+              <PlayerAvatar name={scorer.name} teamColor={league.color} size={44} />
+              <ClubCrest club={scorer.team} size={36} />
+              <div>
+                <div className="flex items-center gap-2">
+                  <Goal className="w-4 h-4 text-green-500" />
+                  <h4 className="text-gray-100">Top Scorer</h4>
+                </div>
+                <p className="text-sm text-gray-400">{scorer.name} · {scorer.team}</p>
               </div>
-              <p className="text-sm text-gray-400">{scorer.name} · {scorer.team}</p>
+              <div className="ml-auto"><LeagueBadge league={league.name} size={28} /></div>
             </div>
-            <div className="ml-auto"><LeagueBadge league={league.name} size={28} /></div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {[
-              { label: 'Goals',           val: scorer.goals,                  pct: scorer.goals / 25 },
-              { label: 'Assists',         val: scorer.assists,                pct: scorer.assists / 15 },
-              { label: 'Conversion Rate', val: '82%',                         pct: 0.82 },
-              { label: 'Expected Goals',  val: (scorer.goals * 0.91).toFixed(1), pct: (scorer.goals * 0.91) / 20 },
-              { label: 'Minutes/Goal',    val: Math.round(1530 / scorer.goals), pct: 1 - Math.round(1530 / scorer.goals) / 150 },
-            ].map(({ label, val, pct }) => (
-              <div key={label} className="bg-gradient-to-br from-green-950/40 to-[#1a1a1a] p-4 rounded-lg border border-green-900/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: league.color }} />
-                  <p className="text-xs text-gray-400">{label}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { label: 'Goals',           val: scorer.goals,                  pct: scorer.goals / 25 },
+                { label: 'Assists',         val: scorer.assists,                pct: scorer.assists / 15 },
+                { label: 'Goals + Assists', val: scorer.goals + scorer.assists, pct: (scorer.goals + scorer.assists) / 35 },
+              ].map(({ label, val, pct }) => (
+                <div key={label} className="bg-gradient-to-br from-green-950/40 to-[#1a1a1a] p-4 rounded-lg border border-green-900/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: league.color }} />
+                    <p className="text-xs text-gray-400">{label}</p>
+                  </div>
+                  <p className="text-3xl font-light text-white">{val}</p>
+                  <div className="mt-3 w-full bg-green-900/40 rounded-full h-2">
+                    <div className="bg-green-600 h-2 rounded-full" style={{ width: `${Math.min(pct * 100, 100)}%` }} />
+                  </div>
                 </div>
-                <p className="text-3xl font-light text-white">{val}</p>
-                <div className="mt-3 w-full bg-green-900/40 rounded-full h-2">
-                  <div className="bg-green-600 h-2 rounded-full" style={{ width: `${Math.min(pct * 100, 100)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <SectionHeading icon={Goal} iconClass="text-green-500" title="Top Scorer" />
+            <NoCurrentData loading={loading} />
+          </>
+        )}
+      </div>
 
       {/* ── Top Assister section ── */}
-      {assister && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-gray-800">
-            <PlayerAvatar name={assister.name} teamColor={league.color} size={44} />
-            <ClubCrest club={assister.team} size={36} />
-            <div>
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-purple-500" />
-                <h4 className="text-gray-100">Top Assister</h4>
+      <div className="space-y-4">
+        {assister ? (
+          <>
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-800">
+              <PlayerAvatar name={assister.name} teamColor={league.color} size={44} />
+              <ClubCrest club={assister.team} size={36} />
+              <div>
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-purple-500" />
+                  <h4 className="text-gray-100">Top Assister</h4>
+                </div>
+                <p className="text-sm text-gray-400">{assister.name} · {assister.team}</p>
               </div>
-              <p className="text-sm text-gray-400">{assister.name} · {assister.team}</p>
+              <div className="ml-auto"><LeagueBadge league={league.name} size={28} /></div>
             </div>
-            <div className="ml-auto"><LeagueBadge league={league.name} size={28} /></div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {[
-              { label: 'Assists',           val: assister.assists,                   pct: assister.assists / 15 },
-              { label: 'Goals',             val: assister.goals,                     pct: assister.goals / 20 },
-              { label: 'Expected Assists',  val: (assister.assists * 0.9).toFixed(1),pct: (assister.assists * 0.9) / 15 },
-              { label: 'Key Passes',        val: assister.assists * 4,               pct: (assister.assists * 4) / 60 },
-              { label: 'Pass Accuracy',     val: '89%',                              pct: 0.89 },
-            ].map(({ label, val, pct }) => (
-              <div key={label} className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: league.color }} />
-                  <p className="text-xs text-gray-400">{label}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { label: 'Assists',         val: assister.assists,                    pct: assister.assists / 15 },
+                { label: 'Goals',           val: assister.goals,                      pct: assister.goals / 20 },
+                { label: 'Goals + Assists', val: assister.goals + assister.assists,   pct: (assister.goals + assister.assists) / 35 },
+              ].map(({ label, val, pct }) => (
+                <div key={label} className="bg-gradient-to-br from-purple-950/40 to-[#1a1a1a] p-4 rounded-lg border border-purple-900/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: league.color }} />
+                    <p className="text-xs text-gray-400">{label}</p>
+                  </div>
+                  <p className="text-3xl font-light text-white">{val}</p>
+                  <div className="mt-3 w-full bg-purple-900/40 rounded-full h-2">
+                    <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${Math.min(pct * 100, 100)}%` }} />
+                  </div>
                 </div>
-                <p className="text-3xl font-light text-white">{val}</p>
-                <div className="mt-3 w-full bg-purple-900/40 rounded-full h-2">
-                  <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${Math.min(pct * 100, 100)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <SectionHeading icon={Activity} iconClass="text-purple-500" title="Top Assister" />
+            <NoCurrentData loading={loading} />
+          </>
+        )}
+      </div>
 
-      {/* ── Top Defender section ── */}
-      {defender && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-gray-800">
-            <PlayerAvatar name={defender.name} teamColor={league.color} size={44} />
-            <ClubCrest club={defender.team} size={36} />
-            <div>
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-orange-500" />
-                <h4 className="text-gray-100">Top Defender</h4>
-              </div>
-              <p className="text-sm text-gray-400">{defender.name} · {defender.team}</p>
-            </div>
-            <div className="ml-auto"><LeagueBadge league={league.name} size={28} /></div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {[
-              { label: 'Rating',        val: defender.goals.toFixed(1),   pct: (defender.goals - 6) / 4 },
-              { label: 'Clean Sheets',  val: defender.assists,            pct: defender.assists / 12 },
-              { label: 'Tackles Won',   val: defender.tacklesWon    ?? 67, pct: (defender.tacklesWon    ?? 67) / 80 },
-              { label: 'Interceptions', val: defender.interceptions ?? 52, pct: (defender.interceptions ?? 52) / 70 },
-              { label: 'Clearances',    val: defender.clearances    ?? 89, pct: (defender.clearances    ?? 89) / 110 },
-            ].map(({ label, val, pct }) => (
-              <div key={label} className="bg-gradient-to-br from-orange-950/40 to-[#1a1a1a] p-4 rounded-lg border border-orange-900/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: league.color }} />
-                  <p className="text-xs text-gray-400">{label}</p>
-                </div>
-                <p className="text-3xl font-light text-white">{val}</p>
-                <div className="mt-3 w-full bg-orange-900/40 rounded-full h-2">
-                  <div className="bg-orange-600 h-2 rounded-full" style={{ width: `${Math.min(Math.max(pct * 100, 0), 100)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Top Goalkeeper section ── */}
-      {keeper && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-gray-800">
-            <PlayerAvatar name={keeper.name} teamColor={league.color} size={44} />
-            <ClubCrest club={keeper.team} size={36} />
-            <div>
-              <div className="flex items-center gap-2">
-                <Hand className="w-4 h-4 text-indigo-400" />
-                <h4 className="text-gray-100">Top Goalkeeper</h4>
-              </div>
-              <p className="text-sm text-gray-400">{keeper.name} · {keeper.team}</p>
-            </div>
-            <div className="ml-auto"><LeagueBadge league={league.name} size={28} /></div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {[
-              { label: 'Clean Sheets',    val: keeper.goals,                            pct: keeper.goals / 17 },
-              { label: 'Rating',          val: keeper.assists.toFixed(1),                pct: (keeper.assists - 6) / 4 },
-              { label: 'Saves',           val: keeper.saves          ?? 78,              pct: (keeper.saves ?? 78) / 100 },
-              { label: 'Save %',          val: `${keeper.savePercentage ?? 76}%`,        pct: (keeper.savePercentage ?? 76) / 100 },
-              { label: 'Minutes Played',  val: keeper.minutesPlayed  ?? 1530,            pct: (keeper.minutesPlayed ?? 1530) / 1800 },
-            ].map(({ label, val, pct }) => (
-              <div key={label} className="bg-gradient-to-br from-indigo-950/40 to-[#1a1a1a] p-4 rounded-lg border border-indigo-900/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: league.color }} />
-                  <p className="text-xs text-gray-400">{label}</p>
-                </div>
-                <p className="text-3xl font-light text-white">{val}</p>
-                <div className="mt-3 w-full bg-indigo-900/40 rounded-full h-2">
-                  <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${Math.min(Math.max(pct * 100, 0), 100)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* ── Defender and goalkeeper: no data provider for these yet ── */}
+      <div className="space-y-4">
+        <SectionHeading icon={Shield} iconClass="text-orange-500" title="Top Defender" />
+        <NoCurrentData />
+      </div>
+      <div className="space-y-4">
+        <SectionHeading icon={Hand} iconClass="text-indigo-400" title="Top Goalkeeper" />
+        <NoCurrentData />
+      </div>
     </div>
   );
 }
 
 // ── Standings tab ────────────────────────────────────────────────────────────
 
-function LeagueTeamsList({ data, league }: { data: LeagueData; league: League }) {
+function LeagueTeamsList({ data, league, loading }: { data: LeagueData; league: League; loading: boolean }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-gray-100">{league.name} Standings</h3>
         <p className="text-sm text-gray-400">2026/27 season</p>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-800">
-              <th className="text-left text-xs text-gray-600 pb-3 px-2">#</th>
-              <th className="text-left text-xs text-gray-500 pb-3">Club</th>
-              <th className="text-center text-xs text-gray-500 pb-3">P</th>
-              <th className="text-center text-xs text-gray-500 pb-3">W</th>
-              <th className="text-center text-xs text-gray-500 pb-3">D</th>
-              <th className="text-center text-xs text-gray-500 pb-3">L</th>
-              <th className="text-center text-xs text-gray-500 pb-3">GD</th>
-              <th className="text-center text-xs text-gray-500 pb-3">Form</th>
-              <th className="text-center text-xs text-gray-500 pb-3">PTS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.standings.map((row) => {
-              const isLeader = row.position === 1;
-              return (
-                <tr
-                  key={row.team}
-                  className="border-b border-gray-800 hover:bg-white/5 transition-colors"
-                  style={isLeader ? { borderLeft: `2px solid ${league.color}` } : undefined}
-                >
-                  <td className="py-3 px-2">
-                    <span className={`text-sm font-bold ${isLeader ? '' : 'text-gray-500'}`}
-                      style={isLeader ? { color: league.color } : undefined}>
-                      {row.position}
-                    </span>
-                  </td>
-                  <td className="py-3">
-                    <div className="flex items-center gap-2.5">
-                      <ClubCrest club={row.team} size={28} />
-                      <span className={`font-medium ${isLeader ? 'text-white' : 'text-gray-100'}`}>{row.team}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 text-center"><span className="text-sm text-gray-400">{row.played}</span></td>
-                  <td className="py-3 text-center"><span className="text-sm text-green-400">{row.won}</span></td>
-                  <td className="py-3 text-center"><span className="text-sm text-gray-400">{row.drawn}</span></td>
-                  <td className="py-3 text-center"><span className="text-sm text-red-400">{row.lost}</span></td>
-                  <td className="py-3 text-center">
-                    <span className={`text-sm ${row.gd > 0 ? 'text-green-400' : row.gd < 0 ? 'text-red-400' : 'text-gray-400'}`}>
-                      {row.gd > 0 ? `+${row.gd}` : row.gd}
-                    </span>
-                  </td>
-                  <td className="py-3">
-                    <div className="flex items-center gap-0.5 justify-center">
-                      {row.form.map((f, i) => <FormBadge key={i} result={f} />)}
-                    </div>
-                  </td>
-                  <td className="py-3 text-center">
-                    <span className="font-bold text-gray-100"
-                      style={isLeader ? { color: league.color } : undefined}>
-                      {row.points}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {data.standings.length === 0 ? (
+        <NoCurrentData loading={loading} />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-800">
+                <th className="text-left text-xs text-gray-600 pb-3 px-2">#</th>
+                <th className="text-left text-xs text-gray-500 pb-3">Club</th>
+                <th className="text-center text-xs text-gray-500 pb-3">P</th>
+                <th className="text-center text-xs text-gray-500 pb-3">W</th>
+                <th className="text-center text-xs text-gray-500 pb-3">D</th>
+                <th className="text-center text-xs text-gray-500 pb-3">L</th>
+                <th className="text-center text-xs text-gray-500 pb-3">GD</th>
+                <th className="text-center text-xs text-gray-500 pb-3">Form</th>
+                <th className="text-center text-xs text-gray-500 pb-3">PTS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.standings.map((row) => {
+                const isLeader = row.position === 1;
+                return (
+                  <tr
+                    key={row.team}
+                    className="border-b border-gray-800 hover:bg-white/5 transition-colors"
+                    style={isLeader ? { borderLeft: `2px solid ${league.color}` } : undefined}
+                  >
+                    <td className="py-3 px-2">
+                      <span className={`text-sm font-bold ${isLeader ? '' : 'text-gray-500'}`}
+                        style={isLeader ? { color: league.color } : undefined}>
+                        {row.position}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-2.5">
+                        <ClubCrest club={row.team} size={28} />
+                        <span className={`font-medium ${isLeader ? 'text-white' : 'text-gray-100'}`}>{row.team}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 text-center"><span className="text-sm text-gray-400">{row.played}</span></td>
+                    <td className="py-3 text-center"><span className="text-sm text-green-400">{row.won}</span></td>
+                    <td className="py-3 text-center"><span className="text-sm text-gray-400">{row.drawn}</span></td>
+                    <td className="py-3 text-center"><span className="text-sm text-red-400">{row.lost}</span></td>
+                    <td className="py-3 text-center">
+                      <span className={`text-sm ${row.gd > 0 ? 'text-green-400' : row.gd < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                        {signed(row.gd)}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-0.5 justify-center">
+                        {row.form.length > 0
+                          ? row.form.map((f, i) => <FormBadge key={i} result={f} />)
+                          : <span className="text-xs text-gray-600">—</span>}
+                      </div>
+                    </td>
+                    <td className="py-3 text-center">
+                      <span className="font-bold text-gray-100"
+                        style={isLeader ? { color: league.color } : undefined}>
+                        {row.points}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Generic player list tab ──────────────────────────────────────────────────
+// ── Goals / assists player list tab ──────────────────────────────────────────
 
-// ── Generic player list tab ──────────────────────────────────────────────────
-
-type PlayerListType = 'goals' | 'assists' | 'defender' | 'gk';
-
-function detectType(subtitle: string): PlayerListType {
-  if (subtitle.startsWith('Goals'))        return 'goals';
-  if (subtitle.startsWith('Assists'))      return 'assists';
-  if (subtitle.startsWith('Rating'))       return 'defender';
-  return 'gk';
-}
-
-function LeaguePlayersList({ players, title, subtitle, league }: {
+function LeaguePlayersList({ players, title, type, league, loading }: {
   players: Player[];
   title: string;
-  subtitle: string;
+  type: 'goals' | 'assists';
   league: League;
+  loading: boolean;
 }) {
-  const type = detectType(subtitle);
+  const subtitle   = type === 'goals' ? 'Goals / Assists' : 'Assists / Goals';
+  const headerCols = type === 'goals' ? ['Goals', 'Assists', 'G+A'] : ['Assists', 'Goals', 'G+A'];
+  const rowValues  = (p: Player) => type === 'goals'
+    ? [p.goals, p.assists, p.goals + p.assists]
+    : [p.assists, p.goals, p.goals + p.assists];
 
-  const headerCols = type === 'goals'
-    ? ['Goals', 'Assists', 'G+A', 'Goal Contr.', 'Goals Rank']
-    : type === 'assists'
-    ? ['Assists', 'Goals', 'G+A', 'Goal Contr.', 'Assists Rank']
-    : type === 'defender'
-    ? ['Rating', 'Clean Sheets', 'Tackles', 'Interceptions', 'Clearances']
-    : ['Clean Sheets', 'Rating', 'Saves', 'Save %', 'Minutes'];
-
-  function rowValues(p: Player) {
-    if (type === 'goals')    return [p.goals, p.assists, p.goals + p.assists, p.goals + p.assists, `#${p.rank}`];
-    if (type === 'assists')  return [p.assists, p.goals, p.goals + p.assists, p.goals + p.assists, `#${p.rank}`];
-    if (type === 'defender') return [
-      p.goals.toFixed(1),
-      p.assists,
-      p.tacklesWon    ?? '—',
-      p.interceptions ?? '—',
-      p.clearances    ?? '—',
-    ];
-    // gk
-    return [
-      p.goals,
-      p.assists.toFixed(1),
-      p.saves          ?? '—',
-      p.savePercentage ? `${p.savePercentage}%` : '—',
-      p.minutesPlayed  ?? '—',
-    ];
-  }
-
-  const accentFrom  = type === 'goals' ? 'from-green-950/30' : type === 'assists' ? 'from-purple-950/30' : type === 'defender' ? 'from-orange-950/30' : 'from-indigo-950/30';
-  const accentBorder = type === 'goals' ? 'border-green-900/30' : type === 'assists' ? 'border-purple-900/30' : type === 'defender' ? 'border-orange-900/30' : 'border-indigo-900/30';
-  const accentText  = type === 'goals' ? 'text-green-400' : type === 'assists' ? 'text-purple-400' : type === 'defender' ? 'text-orange-400' : 'text-indigo-400';
-  const primaryCol  = type === 'goals' ? 'text-green-400' : type === 'assists' ? 'text-purple-400' : type === 'defender' ? 'text-orange-400' : 'text-indigo-400';
+  const accentFrom   = type === 'goals' ? 'from-green-950/30'   : 'from-purple-950/30';
+  const accentBorder = type === 'goals' ? 'border-green-900/30' : 'border-purple-900/30';
+  const accentText   = type === 'goals' ? 'text-green-400'      : 'text-purple-400';
+  const gridCols = `2rem 1fr 6rem repeat(${headerCols.length}, 4.5rem)`;
 
   return (
     <div className="space-y-3">
@@ -610,55 +557,57 @@ function LeaguePlayersList({ players, title, subtitle, league }: {
         <p className="text-sm text-gray-400">{league.name} · {subtitle}</p>
       </div>
 
-      {/* Header row */}
-      <div className={`grid items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-br ${accentFrom} to-[#111] border ${accentBorder} text-xs text-gray-500`}
-        style={{ gridTemplateColumns: `2rem 1fr 6rem repeat(${headerCols.length}, 4.5rem)` }}>
-        <span>#</span>
-        <span>Player</span>
-        <span>Club</span>
-        {headerCols.map(h => <span key={h} className={`text-center ${accentText}`}>{h}</span>)}
-      </div>
-
-      {players.map((player, index) => {
-        const vals = rowValues(player);
-        const isTop3 = index < 3;
-        return (
-          <div
-            key={player.rank ?? index}
-            className={`grid items-center gap-2 px-3 py-3 rounded-lg border transition-colors
-              ${isTop3
-                ? `bg-gradient-to-br ${accentFrom} to-[#1a1a1a] ${accentBorder} hover:brightness-110`
-                : 'bg-[#1a1a1a] border-gray-800 hover:bg-[#222]'
-              }`}
-            style={{ gridTemplateColumns: `2rem 1fr 6rem repeat(${headerCols.length}, 4.5rem)` }}
-          >
-            {/* Rank */}
-            <span className={`text-sm font-bold text-center ${isTop3 ? accentText : 'text-gray-600'}`}>
-              {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
-            </span>
-            {/* Name + team text */}
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <PlayerAvatar name={player.name} teamColor={league.color} size={28} />
-                <div className="min-w-0">
-                  <p className="text-gray-100 font-medium text-sm truncate">{player.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{player.team}</p>
-                </div>
-              </div>
-            </div>
-            {/* Club crest */}
-            <div className="flex justify-center">
-              <ClubCrest club={player.team} size={26} />
-            </div>
-            {/* Stat columns */}
-            {vals.map((v, i) => (
-              <div key={i} className="text-center">
-                <span className={`text-sm font-semibold ${i === 0 ? primaryCol : 'text-gray-300'}`}>{v}</span>
-              </div>
-            ))}
+      {players.length === 0 ? (
+        <NoCurrentData loading={loading} />
+      ) : (
+        <>
+          {/* Header row */}
+          <div className={`grid items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-br ${accentFrom} to-[#111] border ${accentBorder} text-xs text-gray-500`}
+            style={{ gridTemplateColumns: gridCols }}>
+            <span>#</span>
+            <span>Player</span>
+            <span>Club</span>
+            {headerCols.map(h => <span key={h} className={`text-center ${accentText}`}>{h}</span>)}
           </div>
-        );
-      })}
+
+          {players.map((player, index) => {
+            const vals = rowValues(player);
+            const isTop3 = index < 3;
+            return (
+              <div
+                key={player.rank ?? index}
+                className={`grid items-center gap-2 px-3 py-3 rounded-lg border transition-colors
+                  ${isTop3
+                    ? `bg-gradient-to-br ${accentFrom} to-[#1a1a1a] ${accentBorder} hover:brightness-110`
+                    : 'bg-[#1a1a1a] border-gray-800 hover:bg-[#222]'
+                  }`}
+                style={{ gridTemplateColumns: gridCols }}
+              >
+                <span className={`text-sm font-bold text-center ${isTop3 ? accentText : 'text-gray-600'}`}>
+                  {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <PlayerAvatar name={player.name} teamColor={league.color} size={28} />
+                    <div className="min-w-0">
+                      <p className="text-gray-100 font-medium text-sm truncate">{player.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{player.team}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-center">
+                  <ClubCrest club={player.team} size={26} />
+                </div>
+                {vals.map((v, i) => (
+                  <div key={i} className="text-center">
+                    <span className={`text-sm font-semibold ${i === 0 ? accentText : 'text-gray-300'}`}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </>
+      )}
     </div>
   );
 }
@@ -667,8 +616,16 @@ function LeaguePlayersList({ players, title, subtitle, league }: {
 
 type TabType = 'top5' | 'teams' | 'goals' | 'assists' | 'defender' | 'gk';
 
-function LeagueStatsSection({ data, league, isLive, topTeamScorer }: { data: LeagueData; league: League; isLive?: boolean; topTeamScorer?: Player | null }) {
+function LeagueStatsSection({ data, league, isLive, topTeamScorer, loadingStandings, loadingScorers }: {
+  data: LeagueData;
+  league: League;
+  isLive: boolean;
+  topTeamScorer?: Player | null;
+  loadingStandings: boolean;
+  loadingScorers: boolean;
+}) {
   const [activeTab, setActiveTab] = useState<TabType>('top5');
+  const loadingAny = loadingStandings || loadingScorers;
 
   const tabs = [
     { id: 'top5'     as TabType, label: 'Top 5',    icon: Trophy  },
@@ -714,19 +671,19 @@ function LeagueStatsSection({ data, league, isLive, topTeamScorer }: { data: Lea
           ) : (
             <div className="flex items-center gap-1.5 bg-gray-800/50 border border-gray-700/40 rounded-full px-2.5 py-1">
               <WifiOff className="w-3 h-3 text-gray-500" />
-              <span className="text-[10px] text-gray-500">Cached</span>
+              <span className="text-[10px] text-gray-500">{loadingAny ? 'Loading…' : 'No live data'}</span>
             </div>
           )}
         </div>
       </div>
 
       <div className="p-4 sm:p-6">
-        {activeTab === 'top5'     && <LeagueTop5Overview data={data} league={league} topTeamScorer={topTeamScorer} />}
-        {activeTab === 'teams'    && <LeagueTeamsList data={data} league={league} />}
-        {activeTab === 'goals'    && <LeaguePlayersList players={data.topScorers}   title="Top Scorers"     subtitle="Goals / Assists"       league={league} />}
-        {activeTab === 'assists'  && <LeaguePlayersList players={data.topAssisters} title="Top Assisters"   subtitle="Assists / Goals"       league={league} />}
-        {activeTab === 'defender' && <LeaguePlayersList players={data.topDefenders} title="Top Defenders"   subtitle="Rating / Clean Sheets" league={league} />}
-        {activeTab === 'gk'       && <LeaguePlayersList players={data.topKeepers}   title="Top Goalkeepers" subtitle="Clean Sheets / Rating"  league={league} />}
+        {activeTab === 'top5'     && <LeagueTop5Overview data={data} league={league} topTeamScorer={topTeamScorer} loading={loadingAny} />}
+        {activeTab === 'teams'    && <LeagueTeamsList data={data} league={league} loading={loadingStandings} />}
+        {activeTab === 'goals'    && <LeaguePlayersList players={data.topScorers}   title="Top Scorers"   type="goals"   league={league} loading={loadingScorers} />}
+        {activeTab === 'assists'  && <LeaguePlayersList players={data.topAssisters} title="Top Assisters" type="assists" league={league} loading={loadingScorers} />}
+        {activeTab === 'defender' && <NoCurrentData title="Top Defenders" />}
+        {activeTab === 'gk'       && <NoCurrentData title="Top Goalkeepers" />}
       </div>
     </div>
   );
@@ -735,22 +692,26 @@ function LeagueStatsSection({ data, league, isLive, topTeamScorer }: { data: Lea
 // ── Page entry point ─────────────────────────────────────────────────────────
 
 export function LeaguePage({ league }: { league: League }) {
-  const staticData = LEAGUE_DATA[league.id];
-  const { data, isLive, topTeamScorer } = useLeagueData(league.id);
-  const { matchesByLeague } = useMatches();
+  const { data, isLive, topTeamScorer, loadingStandings, loadingScorers } = useLeagueData(league.id);
+  const { matchesByLeague, loading: loadingMatches } = useMatches();
 
-  const liveLeagueMatches = matchesByLeague[league.name];
-
-  if (!staticData) return null;
+  if (!LEAGUES.some(l => l.id === league.id)) return null;
 
   return (
     <div key={league.id}>
       {/* ── Match strip ── */}
-      <LeagueMatchStrip data={data} league={league} liveMatches={liveLeagueMatches} />
+      <LeagueMatchStrip data={data} league={league} liveMatches={matchesByLeague[league.name]} loading={loadingMatches} />
 
       {/* ── Stats, full width like Home (social feed hidden pending redesign) ── */}
       <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <LeagueStatsSection data={data} league={league} isLive={isLive} topTeamScorer={topTeamScorer} />
+        <LeagueStatsSection
+          data={data}
+          league={league}
+          isLive={isLive}
+          topTeamScorer={topTeamScorer}
+          loadingStandings={loadingStandings}
+          loadingScorers={loadingScorers}
+        />
       </div>
     </div>
   );
