@@ -45,12 +45,17 @@ function HowCalculated() {
 }
 
 /** One category tab: top-5 table, last-updated time and the explanation panel. */
-export function CategoryTable({ category, data }: { category: Category; data: CategoryData }) {
+export function CategoryTable({ category, data, title }: {
+  category: Category;
+  data: CategoryData;
+  /** Heading above the table; defaults to "Top 5 <category>". */
+  title?: string;
+}) {
   const { entries, loading, lastUpdated } = data;
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-gray-100">Top 5 {category.label}</h3>
+        <h3 className="text-gray-100">{title ?? `Top 5 ${category.label}`}</h3>
         <LastUpdated time={lastUpdated} />
       </div>
 

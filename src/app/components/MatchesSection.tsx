@@ -30,24 +30,29 @@ function stripMatches(all: NormalizedMatch[]): NormalizedMatch[] {
 }
 
 interface MatchesSectionProps {
-  /** League shown first (the league page the visitor is on). */
-  focusLeague?: string;
+  /**
+   * On a league or Champions League page: show only this competition
+   * (e.g. "epl" or "ucl"). Left out on the home page, which shows them all.
+   */
+  onlyLeagueId?: string;
 }
 
-export function MatchesSection({ focusLeague }: MatchesSectionProps) {
+export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
   const { allMatches, loading, error, refresh } = useMatches();
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  const matches = stripMatches(allMatches);
+  // Never fall back to other competitions: if the selected one has no
+  // matches, the strip says "No matches in the next few days".
+  const matches = stripMatches(allMatches)
+    .filter(m => !onlyLeagueId || m.leagueId === onlyLeagueId);
   const byLeague = matches.reduce<Record<string, NormalizedMatch[]>>((acc, m) => {
     (acc[m.leagueName] ??= []).push(m);
     return acc;
   }, {});
 
-  const order = focusLeague ? [focusLeague, ...LEAGUE_ORDER.filter(l => l !== focusLeague)] : LEAGUE_ORDER;
   const leagues = [
-    ...order.filter(l => byLeague[l]),
-    ...Object.keys(byLeague).filter(l => !order.includes(l)),
+    ...LEAGUE_ORDER.filter(l => byLeague[l]),
+    ...Object.keys(byLeague).filter(l => !LEAGUE_ORDER.includes(l)),
   ];
 
   const strengths = useClubStrengths(matches.map(m => m.leagueId));
@@ -124,7 +129,9 @@ export function MatchesSection({ focusLeague }: MatchesSectionProps) {
                   <div className="mb-2 flex items-center gap-2">
                     <LeagueBadge league={leagueName} size={22} />
                     <h3 className="text-xs font-semibold text-gray-200">{leagueName}</h3>
-                    <span className="text-[10px] text-gray-500">{leagueMatches.length}</span>
+                    {leagueMatches[0].matchday != null && (
+                      <span className="text-[10px] text-gray-500">Matchday {leagueMatches[0].matchday}</span>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     {leagueMatches.map(match => (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { fetchMatchWindow, type NormalizedMatch } from '../services/footballDataService';
+import { fetchCurrentMatchdays, type NormalizedMatch } from '../services/footballDataService';
 
 // ── Module-level cache (survives re-renders, not HMR reloads) ─────────────────
 
@@ -55,7 +55,7 @@ export function useMatches() {
     }
 
     if (!_inflight) {
-      _inflight = fetchMatchWindow()
+      _inflight = fetchCurrentMatchdays()
         .then(data => {
           _cache = { data, timestamp: Date.now(), hasLive: data.some(m => m.status === 'live') };
           _lastFailed = false;

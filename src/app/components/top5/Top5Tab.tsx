@@ -1,7 +1,7 @@
 import { ClubCrest } from '../ClubCrest';
 import { LeagueBadge } from '../LeagueBadge';
 import { NoCurrentData } from '../NoCurrentData';
-import { CATEGORIES, CATEGORY_ORDER, type CategoryData, type CategoryId, type Top5Entry, type Category } from './top5Data';
+import { CATEGORIES, CATEGORY_ORDER, type CategoryData, type CategoryId, type Top5Entry, type Category, type Top5League } from './top5Data';
 import { DASH, LastUpdated, SCORE_CAPTION, ScoreValue, formatStat } from './shared';
 
 // Top 5 tab: one card per category showing the current leader.
@@ -50,7 +50,7 @@ function LeaderCard({ category, leader, loading }: { category: Category; leader?
   );
 }
 
-export function Top5Tab({ data }: { data: Record<CategoryId, CategoryData> }) {
+export function Top5Tab({ data, league }: { data: Record<CategoryId, CategoryData>; league?: Top5League }) {
   const times = CATEGORY_ORDER.map(id => data[id].lastUpdated).filter((t): t is Date => t !== null);
   const latest = times.length ? new Date(Math.max(...times.map(t => t.getTime()))) : null;
 
@@ -59,7 +59,9 @@ export function Top5Tab({ data }: { data: Record<CategoryId, CategoryData> }) {
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h3 className="text-gray-100">Current leaders</h3>
-          <p className="text-sm text-gray-500">La Liga, EPL, Serie A, Bundesliga and Ligue 1</p>
+          <p className="text-sm text-gray-500">
+            {league ? league.label ?? league.name : 'La Liga, EPL, Serie A, Bundesliga and Ligue 1'}
+          </p>
         </div>
         <LastUpdated time={latest} />
       </div>
