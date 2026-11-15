@@ -2,7 +2,7 @@ import { ClubCrest } from '../ClubCrest';
 import { LeagueBadge } from '../LeagueBadge';
 import { NoCurrentData } from '../NoCurrentData';
 import { CATEGORIES, CATEGORY_ORDER, type CategoryData, type CategoryId, type Top5Entry, type Category, type Top5League } from './top5Data';
-import { DASH, LastUpdated, ScoreValue, formatStat } from './shared';
+import { DASH, LastUpdated, OpponentsInfo, ScoreValue, formatStat } from './shared';
 
 // Top 5 tab: one card per category showing the current leader.
 
@@ -32,7 +32,7 @@ function LeaderCard({ category, leader, loading }: { category: Category; leader?
           </div>
 
           <p className="mb-3 text-xs text-gray-400">
-            Opponents faced: <span className="text-gray-200">{leader.opponentsFaced ?? DASH}</span>
+            Opponents faced<OpponentsInfo />: <span className="text-gray-200">{leader.opponentsFaced ?? DASH}</span>
           </p>
 
           <dl className="space-y-1.5 border-t border-gray-800 pt-3">

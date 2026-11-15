@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { ClubCrest } from '../ClubCrest';
 import { LeagueBadge } from '../LeagueBadge';
 import { NoCurrentData } from '../NoCurrentData';
@@ -30,6 +31,79 @@ export function LastUpdated({ time }: { time: Date | null }) {
   );
 }
 
+const OPPONENTS_INFO =
+  'How tough this schedule has been so far, compared with others in this list. Hard = toughest third, Average = middle third, Easy = gentlest third. Tougher opponents make each action count for more in the score.';
+
+/** Small info button beside "Opponents faced". Opens on click or focus; closes on Escape or clicking away. */
+export function OpponentsInfo() {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 256 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  const show = () => {
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) {
+      const width = Math.min(256, window.innerWidth - 16);
+      const left = Math.max(8, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 8));
+      setPos({ top: rect.bottom + 6, left, width });
+    }
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        buttonRef.current?.focus({ preventScroll: true });
+      }
+    };
+    const onPointer = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (!buttonRef.current?.contains(target) && !popRef.current?.contains(target)) setOpen(false);
+    };
+    const close = () => setOpen(false);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label="What does Opponents faced mean?"
+        aria-expanded={open}
+        onClick={show}
+        onFocus={show}
+        className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-500 align-middle text-[10px] font-semibold leading-none text-gray-300 hover:border-gray-300 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
+      >
+        i
+      </button>
+      {open && (
+        <div
+          ref={popRef}
+          role="dialog"
+          aria-label="Opponents faced"
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width }}
+          className="z-50 rounded-lg border border-gray-700 bg-[#111111] p-3 text-left text-xs font-normal normal-case leading-snug tracking-normal text-gray-200 shadow-lg"
+        >
+          {OPPONENTS_INFO}
+        </div>
+      )}
+    </>
+  );
+}
+
 const PLAYER_INTRO =
   'We score every player on what he does per 90 minutes, counting actions against tougher opponents and in tougher leagues for more.';
 const PLAYER_SENTENCES = [
@@ -43,6 +117,20 @@ const PLAYER_SENTENCES_COMPETITION = [
 
 const CLUB_SENTENCE =
   'We rank every club on league results, goal difference and recent form, adjusted for league strength and opponents. Champions League results then add up to 3 points or take away up to 1.5.';
+
+const OPPONENTS_TEXT: Record<CategoryId, string> = {
+  clubs:
+    "We rate every opponent by the points it wins per game. This label shows whether this club's opponents so far were among the toughest, the middle or the gentlest third.",
+  strikers:
+    "We rate every opponent's defence by the goals it concedes and the points it wins. This label shows whether the defences this player has faced were among the toughest, the middle or the gentlest third. A goal or assist against a tough defence counts for more.",
+  creators:
+    "We rate every opponent's defence by the goals it concedes and the points it wins. This label shows whether the defences this player has faced were among the toughest, the middle or the gentlest third. A goal or assist against a tough defence counts for more.",
+  defenders:
+    "We rate every opponent's attack by the goals it scores and the points it wins. This label shows whether the attacks this player has faced were among the toughest, the middle or the gentlest third. Stopping a strong attack counts for more, and conceding to one counts for less.",
+  goalkeepers:
+    "We rate every opponent's attack by the goals it scores and the points it wins. This label shows whether the attacks this player has faced were among the toughest, the middle or the gentlest third. Stopping a strong attack counts for more, and conceding to one counts for less.",
+};
+const OPPONENTS_NOTE = 'It describes the schedule, not the performance, and it evens out as the season goes on.';
 
 const HOW_CALCULATED: Record<CategoryId, { sentences: string[]; weights: [string, string][] }> = {
   clubs: {
@@ -102,6 +190,11 @@ function HowCalculated({ id, inCompetition }: { id: CategoryId; inCompetition: b
           </div>
         ))}
       </dl>
+      <div className="mt-3 border-t border-gray-800 pt-3">
+        <h5 className="mb-1 text-sm font-medium text-gray-200">Opponents faced</h5>
+        <p className="mb-2 text-sm text-gray-400">{OPPONENTS_TEXT[id]}</p>
+        <p className="text-sm text-gray-400">{OPPONENTS_NOTE}</p>
+      </div>
     </div>
   );
 }
@@ -131,7 +224,7 @@ export function CategoryTable({ category, data, title }: {
                 <th className="px-2 pb-3 text-left font-normal">#</th>
                 <th className="pb-3 text-left font-normal">Name</th>
                 <th className="px-2 pb-3 text-center font-normal">Top5 Score</th>
-                <th className="px-2 pb-3 text-center font-normal">Opponents</th>
+                <th className="px-2 pb-3 text-center font-normal">Opponents faced<OpponentsInfo /></th>
                 {category.statLabels.map(label => (
                   <th key={label} className="px-2 pb-3 text-center font-normal">{label}</th>
                 ))}
