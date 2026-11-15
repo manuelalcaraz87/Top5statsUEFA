@@ -71,6 +71,11 @@ function signed(n: number): string {
   return `${n > 0 ? '+' : '−'}${Math.abs(n).toFixed(1)} points`;
 }
 
+/** Drops a trailing penalty note, e.g. "Goals per 90 (penalty = ½)" -> "Goals per 90" (the rule is explained in "How this score is calculated"). */
+function shortLabel(label: string): string {
+  return label.replace(/\s*\([^)]*penalt[^)]*\)\s*$/i, '');
+}
+
 /** "Why this score": one bar per ingredient of the chosen row, with a mark at 50. */
 export function WhyPanel({ entry, rank, category }: { entry: Top5Entry; rank: number; category: Category }) {
   const ingredients = entry.ingredients ?? [];
@@ -85,11 +90,12 @@ export function WhyPanel({ entry, rank, category }: { entry: Top5Entry; rank: nu
         <ul className="space-y-3">
           {ingredients.map(item => (
             <li key={item.key}>
-              <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
-                <span className="text-gray-100">
-                  {item.label} <span className="text-gray-400">· {Math.round(item.weight)}% of score</span>
+              <div className="mb-1 flex items-start justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block text-sm leading-tight text-gray-100">{shortLabel(item.label)}</span>
+                  <span className="block text-xs leading-tight text-gray-400">{Math.round(item.weight)}% of score</span>
                 </span>
-                <span className="font-bold tabular-nums text-white">{item.score.toFixed(1)}</span>
+                <span className="text-sm font-bold tabular-nums text-white">{item.score.toFixed(1)}</span>
               </div>
               <div
                 role="meter"

@@ -29,7 +29,7 @@ export function TopStatsSection({ league }: { league?: Top5League }) {
   const data = useTop5Data(league);
 
   return (
-    <div className="bg-[#111111] rounded-lg shadow-xl border border-gray-800 overflow-hidden">
+    <div className="bg-[#111111] rounded-lg shadow-xl border border-gray-800 overflow-clip">
       {/* Tabs */}
       <div
         className="bg-[#0d0d0d] border-b border-gray-800 overflow-x-auto scrollbar-hide"

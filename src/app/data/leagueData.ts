@@ -12,11 +12,11 @@ export interface League {
 
 export const LEAGUES: League[] = [
   { id: 'la-liga',    name: 'La Liga' },
-  { id: 'epl',        name: 'EPL' },
+  { id: 'epl',        name: 'Premier League' },
   { id: 'serie-a',    name: 'Serie A' },
   { id: 'bundesliga', name: 'Bundesliga' },
   { id: 'ligue-1',    name: 'Ligue 1' },
-  { id: 'ucl',        name: 'UCL' },
+  { id: 'ucl',        name: 'Champions League' },
 ];
 
 export interface Standing {

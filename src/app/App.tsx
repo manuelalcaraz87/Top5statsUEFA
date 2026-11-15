@@ -15,7 +15,7 @@ const leagues = [
   },
   {
     id: 'epl',
-    name: 'EPL',
+    name: 'Premier League',
     label: 'Premier League',
     color: '#94a3b8',
     accentColor: '#94a3b8',
@@ -43,7 +43,7 @@ const leagues = [
   },
   {
     id: 'ucl',
-    name: 'UCL',
+    name: 'Champions League',
     label: 'Champions League',
     color: '#94a3b8',
     accentColor: '#94a3b8',
@@ -72,7 +72,7 @@ export default function App() {
 
   if (shouldShowUnderConstruction) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-[#0b0f19] text-white">
+      <div className="relative min-h-screen overflow-clip bg-[#0b0f19] text-white">
         <div
           className="absolute inset-0"
           style={{ background: 'linear-gradient(160deg, #1a1a1a 0%, #0b0f19 55%, #070b12 100%)' }}

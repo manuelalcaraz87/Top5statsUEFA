@@ -13,7 +13,7 @@ import type { NormalizedMatch } from '../services/footballDataService';
 // row of chips above that jump to a group. League pages: a plain wrapping grid.
 // Same neutral colours for every league.
 
-const LEAGUE_ORDER = ['La Liga', 'EPL', 'Serie A', 'Bundesliga', 'Ligue 1', 'UCL'];
+const LEAGUE_ORDER = ['La Liga', 'Premier League', 'Serie A', 'Bundesliga', 'Ligue 1', 'Champions League'];
 const CARD_GAP_PX = 8;
 const BUTTON_CLASS = 'rounded-lg bg-[#2a2a2a] p-2 text-gray-300 transition-colors hover:bg-[#333333] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-[#2a2a2a] disabled:hover:text-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-400';
 

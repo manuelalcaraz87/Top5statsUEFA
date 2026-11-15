@@ -3,11 +3,11 @@
 
 const LEAGUE_CODES: Record<string, string> = {
   'La Liga':    'ESP',
-  'EPL':        'ENG',
+  'Premier League': 'ENG',
   'Serie A':    'ITA',
   'Bundesliga': 'GER',
   'Ligue 1':    'FRA',
-  'UCL':        'EUR',
+  'Champions League': 'EUR',
 };
 
 interface LeagueBadgeProps {
