@@ -1,7 +1,7 @@
 import { CATEGORIES, type CategoryData } from './top5Data';
-import { CategoryTable } from './shared';
+import { CategoryView } from './CategoryView';
 
-// Creators tab: top 5 creators table, then "How this score is calculated".
+// Creators tab: top 5 creators cards and charts, then "How this score is calculated".
 export function CreatorsTab({ data }: { data: CategoryData }) {
-  return <CategoryTable category={CATEGORIES.creators} data={data} />;
+  return <CategoryView category={CATEGORIES.creators} data={data} />;
 }

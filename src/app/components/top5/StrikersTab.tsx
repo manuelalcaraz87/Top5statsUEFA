@@ -1,7 +1,7 @@
 import { CATEGORIES, type CategoryData } from './top5Data';
-import { CategoryTable } from './shared';
+import { CategoryView } from './CategoryView';
 
-// Strikers tab: top 5 strikers table, then "How this score is calculated".
+// Strikers tab: top 5 strikers cards and charts, then "How this score is calculated".
 export function StrikersTab({ data }: { data: CategoryData }) {
-  return <CategoryTable category={CATEGORIES.strikers} data={data} />;
+  return <CategoryView category={CATEGORIES.strikers} data={data} />;
 }

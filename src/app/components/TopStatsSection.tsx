@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Trophy, Goal, Users, Shield, Activity, Hand } from 'lucide-react';
-import { useTop5Data, type Top5League } from './top5/top5Data';
+import { CATEGORIES, useTop5Data, type Top5League } from './top5/top5Data';
+import { NEUTRAL_COLOUR } from './top5/categoryColours';
 import { Top5Tab } from './top5/Top5Tab';
 import { ClubsTab } from './top5/ClubsTab';
 import { StrikersTab } from './top5/StrikersTab';
@@ -14,13 +14,14 @@ import { GoalkeepersTab } from './top5/GoalkeepersTab';
 
 type TabId = 'top5' | 'clubs' | 'strikers' | 'creators' | 'defenders' | 'goalkeepers';
 
-const TABS: { id: TabId; label: string; icon: typeof Trophy }[] = [
-  { id: 'top5',        label: 'Top 5',       icon: Trophy },
-  { id: 'clubs',       label: 'Clubs',       icon: Users },
-  { id: 'strikers',    label: 'Strikers',    icon: Goal },
-  { id: 'creators',    label: 'Creators',    icon: Activity },
-  { id: 'defenders',   label: 'Defenders',   icon: Shield },
-  { id: 'goalkeepers', label: 'Goalkeepers', icon: Hand },
+// Each tab has a small square in its colour; the Top 5 tab is neutral grey.
+const TABS: { id: TabId; label: string; colour: string }[] = [
+  { id: 'top5',        label: 'Top 5',       colour: NEUTRAL_COLOUR },
+  { id: 'clubs',       label: 'Clubs',       colour: CATEGORIES.clubs.colour },
+  { id: 'strikers',    label: 'Strikers',    colour: CATEGORIES.strikers.colour },
+  { id: 'creators',    label: 'Creators',    colour: CATEGORIES.creators.colour },
+  { id: 'defenders',   label: 'Defenders',   colour: CATEGORIES.defenders.colour },
+  { id: 'goalkeepers', label: 'Goalkeepers', colour: CATEGORIES.goalkeepers.colour },
 ];
 
 export function TopStatsSection({ league }: { league?: Top5League }) {
@@ -36,18 +37,19 @@ export function TopStatsSection({ league }: { league?: Top5League }) {
       >
         <div className="flex min-w-max sm:min-w-0">
           {TABS.map(tab => {
-            const Icon = tab.icon;
+            const active = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 sm:px-6 py-4 whitespace-nowrap transition-colors border-b-2 ${
-                  activeTab === tab.id
-                    ? 'border-white bg-[#2a2a2a] text-white'
-                    : 'border-transparent text-gray-400 hover:text-white hover:bg-[#252525]'
+                aria-current={active ? 'page' : undefined}
+                className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 sm:px-6 ${
+                  active ? 'bg-[#1a1a1a] text-white' : 'border-transparent text-gray-300 hover:bg-[#252525] hover:text-white'
                 }`}
+                style={active ? { borderBottomColor: tab.colour } : undefined}
               >
-                <Icon className="w-4 h-4" />
+                <span aria-hidden="true" className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: tab.colour }} />
                 <span className="text-sm sm:text-base">{tab.label}</span>
               </button>
             );
