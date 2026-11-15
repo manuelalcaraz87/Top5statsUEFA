@@ -16,4 +16,5 @@ React + TypeScript + Vite + Tailwind in src/app. Small Express proxy in server/.
 - Work on a feature branch and open pull requests into main. Never push to main directly.
 - Change only the files a task names. No unrelated refactoring. Do not touch src/app/components/ui.
 - Never show sample, mock or placeholder numbers, players or matches as if they were real. If data is missing, show "No current data".
+- Gold #f4c95d is only for the logo, rank 1 and the Top5 Score. Crimson #c41e3a is only for the current page.
 - Data providers are football-data.org and API-Football only. Sportmonks is not used.

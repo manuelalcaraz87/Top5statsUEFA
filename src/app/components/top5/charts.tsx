@@ -13,7 +13,7 @@ const TRACK = '#2d2f36';
  * Score ring: a ring filled in proportion to the score (out of 100), the score
  * as normal text in the middle and "Top5 Score" underneath.
  */
-export function ScoreRing({ score, colour, size = 72 }: { score: number | null; colour: string; size?: number }) {
+export function ScoreRing({ score, colour, size = 72, gold = false }: { score: number | null; colour: string; size?: number; gold?: boolean }) {
   const radius = 16;
   const circumference = 2 * Math.PI * radius;
   const fraction = score === null ? 0 : Math.min(1, Math.max(0, score / 100));
@@ -30,8 +30,8 @@ export function ScoreRing({ score, colour, size = 72 }: { score: number | null; 
           )}
         </svg>
         <span
-          className="absolute inset-0 flex items-center justify-center font-bold tabular-nums text-white"
-          style={{ fontSize: Math.round(size * 0.29) }}
+          className="text-display absolute inset-0 flex items-center justify-center text-white"
+          style={{ fontSize: Math.round(size * 0.34), ...(gold ? { color: '#f4c95d' } : {}) }}
         >
           {formatScore(score)}
           {score !== null && <span className="sr-only"> out of 100</span>}
@@ -43,11 +43,11 @@ export function ScoreRing({ score, colour, size = 72 }: { score: number | null; 
 }
 
 /** Compact score for tables: the number in a small chip edged in the category colour. */
-export function ScoreChip({ score, colour }: { score: number | null; colour: string }) {
+export function ScoreChip({ score, colour, gold = false }: { score: number | null; colour: string; gold?: boolean }) {
   return (
     <span
-      className="inline-block min-w-[3rem] rounded-md border px-2 py-0.5 text-center text-sm font-bold tabular-nums text-white"
-      style={{ borderColor: colour, backgroundColor: withAlpha(colour, 0.16) }}
+      className="text-display inline-block min-w-[3rem] rounded-md border px-2 py-0.5 text-center text-base text-white"
+      style={{ borderColor: colour, backgroundColor: withAlpha(colour, 0.16), ...(gold ? { color: '#f4c95d' } : {}) }}
     >
       {formatScore(score)}
     </span>

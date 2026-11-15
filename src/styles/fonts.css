@@ -1,0 +1,21 @@
+/* Floodlight theme fonts, served from the installed packages (nothing is loaded from outside addresses). */
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+
+/* Inter is the default font for the whole site. */
+html,
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* "Display" text: headings, site name, category tab names, rank numbers and Top5 Score numbers. */
+.text-display {
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+}

@@ -25,7 +25,7 @@ export function CategoryView({ category, data, title }: {
           <p className="text-xs font-bold uppercase tracking-widest" style={{ color: category.colour }}>
             {category.label}
           </p>
-          <h3 className="text-xl font-bold text-white">{title ?? `Top 5 ${category.label}`}</h3>
+          <h3 className="text-display text-xl text-white">{title ?? `Top 5 ${category.label}`}</h3>
         </div>
         <LastUpdated time={lastUpdated} />
       </div>

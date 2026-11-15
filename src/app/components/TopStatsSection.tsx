@@ -50,7 +50,7 @@ export function TopStatsSection({ league }: { league?: Top5League }) {
                 style={active ? { borderBottomColor: tab.colour } : undefined}
               >
                 <span aria-hidden="true" className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: tab.colour }} />
-                <span className="text-sm sm:text-base">{tab.label}</span>
+                <span className="text-display text-sm sm:text-base">{tab.label}</span>
               </button>
             );
           })}
