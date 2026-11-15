@@ -314,13 +314,13 @@ async function fetchCurrentRound(leagueId: string): Promise<NormalizedMatch[]> {
 }
 
 /**
- * Current round for every competition (La Liga, EPL, Serie A, Bundesliga,
- * Ligue 1, UCL), or only for the given competitions (a league page asks for
- * just its own). Each competition's matches all come from one matchday.
- * A competition that fails to load is left out; throws only if all fail,
- * so callers don't mistake an error for "no matches".
+ * Current round for the given competitions (a league page asks for just its
+ * own). Each competition's matches all come from one matchday. This needs the
+ * competition's standings (for its current matchday), so it is used only on a
+ * league or Champions League page, never on the home page.
+ * Throws if any of them fail, so callers don't mistake an error for "no matches".
  */
-export async function fetchCurrentMatchdays(leagueIds: string[] = Object.keys(LEAGUE_CODES)): Promise<NormalizedMatch[]> {
+export async function fetchCurrentMatchdays(leagueIds: string[]): Promise<NormalizedMatch[]> {
   const results = await Promise.allSettled(leagueIds.map(fetchCurrentRound));
   const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
   if (failed.length === results.length) {
@@ -329,6 +329,36 @@ export async function fetchCurrentMatchdays(leagueIds: string[] = Object.keys(LE
   }
   failed.forEach(r => console.warn('[matches] one competition failed:', r.reason));
   return results.flatMap(r => (r.status === 'fulfilled' ? r.value : []));
+}
+
+// football-data.org's free plan allows at most 10 days in one date range.
+const HOME_DAYS_BEFORE = 2;
+const HOME_DAYS_AFTER = 7;
+
+const isoDay = (daysFromToday: number) =>
+  new Date(Date.now() + daysFromToday * 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * The home page's matches for all six competitions in ONE request: every match
+ * from 2 days ago to 7 days ahead. No standings are needed. For each
+ * competition we then keep a single round (the earliest one that still has a
+ * match that is live, to come, or finished today), as on the league pages.
+ */
+export async function fetchHomeMatches(): Promise<NormalizedMatch[]> {
+  const data = await get<{ matches: Record<string, unknown>[] }>('matches', {
+    competitions: Object.values(LEAGUE_CODES).join(','),
+    dateFrom: isoDay(-HOME_DAYS_BEFORE),
+    dateTo: isoDay(HOME_DAYS_AFTER),
+  });
+  const all = (data.matches ?? []).map(normalizeMatch);
+
+  return Object.keys(LEAGUE_CODES).flatMap(leagueId => {
+    const own = all.filter(m => m.leagueId === leagueId);
+    const firstRelevant = own
+      .filter(m => m.status !== 'finished' || isToday(m.utcDate))
+      .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime())[0];
+    return firstRelevant ? own.filter(m => m.matchday === firstRelevant.matchday) : [];
+  });
 }
 
 export interface StandingsResult {

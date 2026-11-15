@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { fetchCurrentMatchdays, type NormalizedMatch } from '../services/footballDataService';
+import { fetchCurrentMatchdays, fetchHomeMatches, type NormalizedMatch } from '../services/footballDataService';
 
-// Matches for the strip. The home page asks for every competition ("all");
-// a league or Champions League page asks only for its own, so it makes only
-// the requests it needs.
+// Matches for the strip. The home page asks for every competition ("all") in
+// one request and never asks for standings; a league or Champions League page
+// asks only for its own competition (its standings and matches).
 
 // ── Module-level caches, one per scope (survive re-renders, not HMR reloads) ──
 
@@ -33,14 +33,9 @@ const PATIENT_GIVE_UP_AFTER_MS = 120_000;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-/** The cache for a scope. A league scope can also be cut out of the "all" cache. */
+/** The cache for a scope. */
 function getCache(key: string): Cache | undefined {
-  const own = caches.get(key);
-  if (own) return own;
-  const all = caches.get(ALL);
-  if (key === ALL || !all) return undefined;
-  const data = all.data.filter(m => m.leagueId === key);
-  return { data, timestamp: all.timestamp, hasLive: data.some(m => m.status === 'live') };
+  return caches.get(key);
 }
 
 function nextPollDelay(key: string): number {
@@ -52,7 +47,7 @@ async function fetchScope(key: string, patient: boolean): Promise<NormalizedMatc
   const started = Date.now();
   for (;;) {
     try {
-      return await fetchCurrentMatchdays(key === ALL ? undefined : [key]);
+      return await (key === ALL ? fetchHomeMatches() : fetchCurrentMatchdays([key]));
     } catch (e) {
       if (!patient || Date.now() - started >= PATIENT_GIVE_UP_AFTER_MS) throw e;
       console.warn(`[useMatches] not answered yet, trying again in ${PATIENT_RETRY_EVERY_MS / 1000} s:`, e);
