@@ -48,8 +48,10 @@ function prefersReducedMotion(): boolean {
 type Strengths = ReturnType<typeof useClubStrengths>;
 
 /** One competition on the home page: header with arrows, then its cards, paged. */
-function CompetitionGroup({ leagueName, matches, strengths, perPage }: {
+function CompetitionGroup({ leagueName, matches, strengths, perPage, status }: {
   leagueName: string;
+  /** loading: its request has not answered yet; error: it failed with nothing to show. */
+  status: 'loading' | 'error' | 'ready';
   matches: NormalizedMatch[];
   strengths: Strengths;
   perPage: number;
@@ -113,7 +115,9 @@ function CompetitionGroup({ leagueName, matches, strengths, perPage }: {
 
       {total === 0 ? (
         <div className="rounded-lg border border-gray-800 bg-[#1a1a1a] p-3">
-          <p className="text-sm text-gray-500">No matches</p>
+          <p className="text-sm text-gray-500" role={status === 'loading' ? 'status' : undefined}>
+            {status === 'loading' ? 'Loading…' : status === 'error' ? 'No current data' : 'No matches'}
+          </p>
         </div>
       ) : (
         <div
@@ -171,13 +175,21 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
     group?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', inline: 'start', block: 'nearest' });
   };
 
+  const wakingMessage = (
+    <div className="mb-3 rounded-lg border border-gray-800 bg-[#1a1a1a] p-3">
+      <p className="text-sm italic text-gray-400">Waking up live data, this can take a minute or two.</p>
+    </div>
+  );
+
+  // The home page keeps its chips and groups on screen at all times; each group
+  // shows its own loading / no-data state. Only a league page uses this block.
+  const groupStatus = leagues.length > 0 ? 'ready' : loading ? 'loading' : error ? 'error' : 'ready';
+
   let empty: ReactNode = null;
-  if (leagues.length === 0) {
-    if (loading && waking) empty = (
-      <div className="rounded-lg border border-gray-800 bg-[#1a1a1a] p-3">
-        <p className="text-sm italic text-gray-400">Waking up live data, this can take up to a minute</p>
-      </div>
-    );
+  if (!onlyLeagueId) {
+    if (loading && waking && leagues.length === 0) empty = wakingMessage;
+  } else if (leagues.length === 0) {
+    if (loading && waking) empty = wakingMessage;
     else if (loading) empty = <NoCurrentData loading compact />;
     else if (error) empty = <NoCurrentData compact />;
     else if (onlyLeagueId) empty = (
@@ -186,8 +198,7 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
       </div>
     );
   }
-  // The home page shows its chips and groups only once there is an answer.
-  const showHome = !onlyLeagueId && !(leagues.length === 0 && (loading || error));
+  const showHome = !onlyLeagueId;
 
   return (
     <section className="border-b border-gray-800 bg-[#141414]" aria-label="Matches">
@@ -218,7 +229,8 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
           <nav aria-label="Jump to a competition" className="mb-3 flex flex-wrap gap-2">
             {groups.map(leagueName => {
               const count = byLeague[leagueName]?.length ?? 0;
-              const label = count > 0 ? `${count} ${count === 1 ? 'match' : 'matches'}` : 'no matches';
+              const none = groupStatus === 'loading' ? 'loading' : groupStatus === 'error' ? 'no current data' : 'no matches';
+              const label = count > 0 ? `${count} ${count === 1 ? 'match' : 'matches'}` : none;
               return (
                 <button
                   key={leagueName}
@@ -230,7 +242,7 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
                   }`}
                 >
                   <span className={count > 0 ? '' : 'opacity-50'} aria-hidden="true"><LeagueBadge league={leagueName} size={20} /></span>
-                  <span>{leagueName} · {count > 0 ? count : 'no matches'}</span>
+                  <span>{leagueName} · {count > 0 ? count : none}</span>
                 </button>
               );
             })}
@@ -251,6 +263,7 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
                 matches={byLeague[leagueName] ?? []}
                 strengths={strengths}
                 perPage={perPage}
+                status={groupStatus}
               />
             ))}
           </div>

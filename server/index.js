@@ -128,12 +128,33 @@ function fdFetchShared(url) {
 // Football Data API Proxy
 // Only GET requests for exactly the pages the site uses are passed on:
 //   competitions/{PL|PD|SA|BL1|FL1|CL}/{standings|matches|scorers}
-// with only the options the site sends (season, matchday, limit), each a plain
-// number. Everything else is answered with 404.
+//     with only the options season, matchday, limit (each a plain number)
+//   matches  (the home page's one request for several competitions)
+//     with exactly: competitions=<codes from the list above, comma separated>,
+//     dateFrom=YYYY-MM-DD and dateTo=YYYY-MM-DD
+// Everything else is answered with 404.
 const FD_PATH = /^competitions\/(PL|PD|SA|BL1|FL1|CL)\/(standings|matches|scorers)$/;
 const FD_ALLOWED_PARAMS = ['season', 'matchday', 'limit'];
+const FD_COMBINED_PATH = 'matches';
+const FD_COMBINED_PARAMS = {
+  competitions: /^(PL|PD|SA|BL1|FL1|CL)(,(PL|PD|SA|BL1|FL1|CL)){0,5}$/,
+  dateFrom: /^\d{4}-\d{2}-\d{2}$/,
+  dateTo: /^\d{4}-\d{2}-\d{2}$/,
+};
 
-function cleanFdQuery(query) {
+function cleanFdQuery(path, query) {
+  if (path === FD_COMBINED_PATH) {
+    const keys = Object.keys(query);
+    const expected = Object.keys(FD_COMBINED_PARAMS);
+    if (keys.length !== expected.length || !expected.every(k => keys.includes(k))) return null;
+    const clean = {};
+    for (const key of expected) {
+      if (typeof query[key] !== 'string' || !FD_COMBINED_PARAMS[key].test(query[key])) return null;
+      clean[key] = query[key];
+    }
+    return clean;
+  }
+  if (!FD_PATH.test(path)) return null;
   const clean = {};
   for (const [key, value] of Object.entries(query)) {
     if (!FD_ALLOWED_PARAMS.includes(key)) return null;
@@ -146,7 +167,7 @@ function cleanFdQuery(query) {
 app.get('/api/fd/*', async (req, res) => {
   try {
     const path = req.params[0];
-    const query = FD_PATH.test(path) ? cleanFdQuery(req.query) : null;
+    const query = cleanFdQuery(path, req.query);
     if (!query) return res.status(404).json({ error: 'Not found' });
     const cacheKey = getCacheKey(`fd/${path}`, query);
 
