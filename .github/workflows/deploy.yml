@@ -41,6 +41,7 @@ jobs:
       - name: Build
         env:
           VITE_API_PROXY_URL: ${{ vars.VITE_API_PROXY_URL }}
+          VITE_SHOW_UNDER_CONSTRUCTION: ${{ vars.VITE_SHOW_UNDER_CONSTRUCTION }}
         run: pnpm build
 
       - name: Fetch latest scores
