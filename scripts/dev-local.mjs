@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const serverDir = join(root, 'server');
 const envFile = join(serverDir, '.env');
-const REQUIRED_KEYS = ['FD_TOKEN', 'AF_TOKEN'];
+const REQUIRED_KEYS = ['FD_TOKEN'];
 
 // The first free port from `start` upwards (an older copy may still be running on the usual one).
 function isFree(port) {
@@ -33,13 +33,12 @@ function stop(lines) {
   process.exit(1);
 }
 
-// ── Check server/.env has both keys (names only are ever printed) ────────────
+// ── Check server/.env has the key (names only are ever printed) ────────────
 if (!existsSync(envFile)) {
   stop([
     'The file server/.env does not exist, so the local server cannot get live data.',
-    'What to do: copy server/.env.example to a new file called server/.env, then put your two keys in it:',
+    'What to do: copy server/.env.example to a new file called server/.env, then put your key in it:',
     '  FD_TOKEN=<your football-data.org key>',
-    '  AF_TOKEN=<your API-Football key>',
     'Then run this command again.',
   ]);
 }
