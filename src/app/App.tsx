@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trophy } from 'lucide-react';
+import { SiteLogo } from './components/SiteLogo';
 import { MatchesSection } from './components/MatchesSection';
 import { TopStatsSection } from './components/TopStatsSection';
 import { LeagueBadge } from './components/LeagueBadge';
@@ -82,7 +82,7 @@ export default function App() {
         <div className="flex flex-1 items-center justify-center px-6 py-12">
           <div className="max-w-2xl rounded-3xl border border-white/10 bg-black/35 p-8 text-center shadow-2xl backdrop-blur-sm sm:p-12">
             <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-[#f4c95d]/40 bg-[#f4c95d]/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.2em] text-[#f4c95d]">
-              <Trophy className="h-4 w-4" />
+              <SiteLogo size={20} />
               Coming soon
             </div>
 
@@ -119,8 +119,10 @@ export default function App() {
                   : 'bg-black hover:bg-gray-900'
               }`}
             >
-              <Trophy className="w-5 h-5 text-white" />
-              <span className="text-white font-semibold">Top5Stats</span>
+              <SiteLogo size={28} />
+              <span className="text-white font-semibold">
+                TOP<span style={{ color: '#f4c95d' }}>5</span>STATS
+              </span>
             </button>
 
             {/* League Tabs */}

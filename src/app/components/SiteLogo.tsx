@@ -1,0 +1,16 @@
+export function SiteLogo({ size }: { size: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 64 64"
+      width={size}
+      height={size}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <rect width="64" height="64" rx="14" fill="#0d0d0d" />
+      <rect x="17" y="9" width="27" height="8" rx="1.5" fill="#f4c95d" />
+      <path d="M21 21V32H34a10.5 10.5 0 0 1 0 21H18" fill="none" stroke="#ffffff" strokeWidth="8" />
+    </svg>
+  );
+}
