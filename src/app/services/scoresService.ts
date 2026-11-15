@@ -172,6 +172,21 @@ const ALIASES: Record<string, string> = {
   'es troyes': 'troyes',
   'real racing club santander': 'racing santander',
   'racing club santander': 'racing santander',
+
+  // Explicit aliases for names that cannot be matched by rule. Each line folds
+  // one spelling onto the other so football-data.org's and scores.json's
+  // spellings end up with the same key (the comment shows both spellings).
+  'deportivo': 'la coruna',                  // Deportivo         = Deportivo La Coruna
+  'santander': 'racing santander',           // Santander         = Racing Santander
+  'hsv': 'hamburg',                          // HSV               = Hamburger SV
+  'club brugge kv': 'club brugge',           // Club Brugge KV    = Club Brugge
+  'lask linz': 'lask',                       // Lask Linz         = LASK
+  'shaktar': 'shakhtar donetsk',             // Shaktar           = Shakhtar Donetsk
+  'psv': 'psv eindhoven',                    // PSV               = PSV Eindhoven
+  'bod glimt': 'bodo glimt',                 // Bodø/Glimt        = Bodo/Glimt (ø is not an accent)
+  'aek athens': 'pae aek',                   // AEK Athens FC     = PAE AEK
+  'sabah fa': 'sabah fk',                    // Sabah FA          = Sabah FK
+  'slovan bratislava': 'sl bratislava',      // Slovan Bratislava = Sl. Bratislava
 };
 
 function simplify(name: string): string {
