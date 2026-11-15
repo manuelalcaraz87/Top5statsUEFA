@@ -139,6 +139,62 @@ function CompetitionGroup({ leagueName, matches, strengths, perPage, status }: {
   );
 }
 
+/**
+ * Paging state for one sideways row of cards (league and Champions League pages):
+ * which cards are in view, whether either end is reached, arrow paging, and
+ * mouse-wheel scrolling while the pointer is over the row.
+ */
+function useCardRow(total: number, resetKey: string | undefined) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState({ first: 0, last: 0, atStart: true, atEnd: true });
+
+  const measure = useCallback(() => {
+    const el = rowRef.current;
+    const card = el?.firstElementChild as HTMLElement | null;
+    if (!el || !card || total === 0) { setView({ first: 0, last: 0, atStart: true, atEnd: true }); return; }
+    const step = card.offsetWidth + CARD_GAP_PX;
+    const first = Math.max(0, Math.min(total - 1, Math.round(el.scrollLeft / step)));
+    const visible = Math.max(1, Math.floor((el.clientWidth + CARD_GAP_PX + 1) / step));
+    const atStart = el.scrollLeft <= 1;
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+    setView({ first, last: atEnd ? total : Math.min(total, first + visible), atStart, atEnd });
+  }, [total]);
+
+  // Start at the first card whenever the page (competition) changes.
+  useEffect(() => { if (rowRef.current) rowRef.current.scrollLeft = 0; }, [resetKey]);
+
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) { measure(); return; }
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    // Mouse wheel (up and down) scrolls the row sideways while hovering, but
+    // once an end is reached the page scrolls normally again.
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return; // trackpads already scroll sideways
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 1) return;
+      if ((e.deltaY < 0 && el.scrollLeft <= 0) || (e.deltaY > 0 && el.scrollLeft >= max - 1)) return;
+      e.preventDefault();
+      el.scrollBy({ left: e.deltaY, behavior: 'auto' });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => { observer.disconnect(); el.removeEventListener('wheel', onWheel); };
+  }, [measure, total]);
+
+  const page = (direction: -1 | 1) => {
+    const el = rowRef.current;
+    const card = el?.firstElementChild as HTMLElement | null;
+    if (!el || !card) return;
+    const step = card.offsetWidth + CARD_GAP_PX;
+    const visible = Math.max(1, Math.floor((el.clientWidth + CARD_GAP_PX + 1) / step));
+    el.scrollBy({ left: direction * visible * step, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  };
+
+  return { rowRef, ...view, measure, page };
+}
+
 interface MatchesSectionProps {
   /**
    * On a league or Champions League page: show only this competition
@@ -151,6 +207,7 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
   const { allMatches, loading, waking, error, refresh } = useMatches(onlyLeagueId);
   const stripRef = useRef<HTMLDivElement>(null);
   const perPage = useWideScreen() ? 3 : 1;
+  const row = useCardRow(onlyLeagueId ? allMatches.filter(m => m.leagueId === onlyLeagueId).length : 0, onlyLeagueId);
 
   // Never fall back to other competitions: a league page shows only its own.
   const matches = sortMatches(allMatches.filter(m => !onlyLeagueId || m.leagueId === onlyLeagueId));
@@ -217,9 +274,26 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
             </div>
             <p className="mt-0.5 text-[11px] text-gray-500">Bar and number show each club's strength.</p>
           </div>
-          <button type="button" onClick={refresh} className={`${BUTTON_CLASS} flex-shrink-0`} title="Refresh" aria-label="Refresh matches">
-            <RefreshCw className="h-3.5 w-3.5" />
-          </button>
+          <div className="flex flex-shrink-0 items-center gap-1.5">
+            {onlyLeagueId && matches.length > 0 && (
+              <>
+                <span className="text-[11px] tabular-nums text-gray-400" aria-live="polite">
+                  {row.last <= row.first + 1 ? `${row.first + 1} of ${matches.length}` : `${row.first + 1}–${row.last} of ${matches.length}`}
+                </span>
+                <button type="button" onClick={() => row.page(-1)} disabled={row.atStart} className={BUTTON_CLASS}
+                  aria-label="Previous matches">
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <button type="button" onClick={() => row.page(1)} disabled={row.atEnd} className={BUTTON_CLASS}
+                  aria-label="Next matches">
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
+            <button type="button" onClick={refresh} className={BUTTON_CLASS} title="Refresh" aria-label="Refresh matches">
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
         {empty}
@@ -269,16 +343,32 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
           </div>
         )}
 
-        {/* League and Champions League pages: a wrapping grid, no paging */}
+        {/* League and Champions League pages: one sideways row of fixed-width cards */}
         {onlyLeagueId && matches.length > 0 && (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          <div
+            ref={row.rowRef}
+            onScroll={row.measure}
+            tabIndex={0}
+            aria-label="Match cards, scroll sideways"
+            className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto overscroll-x-contain px-4 pb-1 scrollbar-hide focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-400 sm:mx-0 sm:snap-proximity sm:scroll-px-0 sm:px-0"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              // Soft fade on the right edge while more cards are off-screen.
+              ...(row.atEnd ? {} : {
+                WebkitMaskImage: 'linear-gradient(to right, #000 calc(100% - 48px), transparent)',
+                maskImage: 'linear-gradient(to right, #000 calc(100% - 48px), transparent)',
+              }),
+            }}
+          >
             {matches.map(match => (
-              <MatchCard
-                key={match.id}
-                match={match}
-                homeStrength={strengths[match.id]?.home}
-                awayStrength={strengths[match.id]?.away}
-              />
+              <div key={match.id} className="w-[min(320px,calc(100vw-2rem))] flex-shrink-0 snap-start sm:w-[176px]">
+                <MatchCard
+                  match={match}
+                  homeStrength={strengths[match.id]?.home}
+                  awayStrength={strengths[match.id]?.away}
+                />
+              </div>
             ))}
           </div>
         )}
