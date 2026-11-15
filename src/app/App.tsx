@@ -68,7 +68,7 @@ export default function App() {
   const [activeView, setActiveView] = useState<'home' | 'league'>('home');
 
   const shouldShowUnderConstruction =
-    import.meta.env.PROD || import.meta.env.VITE_SHOW_UNDER_CONSTRUCTION === 'true';
+    import.meta.env.VITE_SHOW_UNDER_CONSTRUCTION === 'true';
 
   if (shouldShowUnderConstruction) {
     return (
