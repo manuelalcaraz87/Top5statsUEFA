@@ -10,7 +10,7 @@ const TRACK = '#2d2f36';
 function Panel({ title, children, live = false }: { title: string; children: ReactNode; live?: boolean }) {
   return (
     <section aria-live={live ? 'polite' : undefined} className="rounded-xl border border-[#2a2c33] bg-[#16181d] p-4">
-      <h4 className="mb-3 text-sm font-semibold text-white">{title}</h4>
+      <h4 className="text-display mb-3 text-sm text-white">{title}</h4>
       {children}
     </section>
   );

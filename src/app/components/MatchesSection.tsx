@@ -94,9 +94,9 @@ function CompetitionGroup({ leagueName, matches, strengths, perPage, status }: {
     >
       <div className="mb-2 flex items-center gap-2">
         <LeagueBadge league={leagueName} size={22} />
-        <h3 className="min-w-0 truncate text-xs font-semibold text-gray-200">{leagueName}</h3>
+        <h3 className="text-display min-w-0 truncate text-xs text-gray-200">{leagueName}</h3>
         {matches[0]?.matchday != null && (
-          <span className="hidden whitespace-nowrap text-[10px] text-gray-500 sm:inline">Matchday {matches[0].matchday}</span>
+          <span className="hidden whitespace-nowrap text-[10px] text-[#94a3b8] sm:inline">Matchday {matches[0].matchday}</span>
         )}
         {total > 0 && (
           <div className="ml-auto flex flex-shrink-0 items-center gap-1.5">
@@ -115,7 +115,7 @@ function CompetitionGroup({ leagueName, matches, strengths, perPage, status }: {
 
       {total === 0 ? (
         <div className="rounded-lg border border-gray-800 bg-[#1a1a1a] p-3">
-          <p className="text-sm text-gray-500" role={status === 'loading' ? 'status' : undefined}>
+          <p className="text-sm text-[#94a3b8]" role={status === 'loading' ? 'status' : undefined}>
             {status === 'loading' ? 'Loading…' : status === 'error' ? 'No current data' : 'No matches'}
           </p>
         </div>
@@ -251,7 +251,7 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
     else if (error) empty = <NoCurrentData compact />;
     else if (onlyLeagueId) empty = (
       <div className="rounded-lg border border-gray-800 bg-[#1a1a1a] p-3">
-        <p className="text-sm text-gray-500">No matches in the next few days</p>
+        <p className="text-sm text-[#94a3b8]">No matches in the next few days</p>
       </div>
     );
   }
@@ -264,7 +264,7 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-white">Matches</h2>
+              <h2 className="text-display text-sm text-white">Matches</h2>
               {hasLive && (
                 <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-red-400">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
@@ -272,7 +272,7 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
                 </span>
               )}
             </div>
-            <p className="mt-0.5 text-[11px] text-gray-500">Bar and number show each club's strength.</p>
+            <p className="mt-0.5 text-[11px] text-[#94a3b8]">Bar and number show each club's strength.</p>
           </div>
           <div className="flex flex-shrink-0 items-center gap-1.5">
             {onlyLeagueId && matches.length > 0 && (
@@ -312,7 +312,7 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
                   onClick={() => jumpTo(leagueName)}
                   aria-label={`${leagueName}, ${label}. Go to ${leagueName}`}
                   className={`flex items-center gap-1.5 rounded-lg border border-[#2a2a2a] px-2 py-1 text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-400 ${
-                    count > 0 ? 'bg-[#1a1a1a] text-gray-200 hover:border-[#3a3a3a] hover:bg-[#222222]' : 'bg-[#141414] text-gray-600 hover:border-[#3a3a3a]'
+                    count > 0 ? 'bg-[#1a1a1a] text-gray-200 hover:border-[#3a3a3a] hover:bg-[#222222]' : 'bg-[#141414] text-[#94a3b8] hover:border-[#3a3a3a]'
                   }`}
                 >
                   <span className={count > 0 ? '' : 'opacity-50'} aria-hidden="true"><LeagueBadge league={leagueName} size={20} /></span>

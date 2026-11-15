@@ -22,7 +22,7 @@ export function LeaguePage({ league }: { league: League }) {
       <div className="border-b border-gray-900 bg-[#0d0d0d]">
         <div className="mx-auto flex max-w-[1800px] items-center gap-3 px-4 py-4 sm:px-6 lg:px-8">
           <LeagueBadge league={league.name} size={28} />
-          <h1 className="text-lg font-bold text-white">{league.label ?? league.name}</h1>
+          <h1 className="text-display text-lg text-white">{league.label ?? league.name}</h1>
         </div>
       </div>
 

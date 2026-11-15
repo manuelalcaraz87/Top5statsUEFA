@@ -41,10 +41,10 @@ export function RankedCards({ category, entries }: { category: Category; entries
             >
               <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-4 xl:grid-cols-[auto_minmax(0,1.2fr)_auto_minmax(0,3.4fr)_auto] xl:gap-x-5">
                 <span
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold tabular-nums"
+                  className="text-display flex h-9 w-9 items-center justify-center rounded-lg text-lg"
                   style={
                     index === 0
-                      ? { backgroundColor: colour, color: '#111111' }
+                      ? { backgroundColor: colour, color: '#111111', outline: '1px solid #f4c95d' }
                       : { backgroundColor: '#2a2c33', color: '#e5e7eb' }
                   }
                 >
@@ -71,7 +71,7 @@ export function RankedCards({ category, entries }: { category: Category; entries
                   </div>
                 </div>
 
-                <ScoreRing score={entry.top5Score} colour={colour} size={68} />
+                <ScoreRing score={entry.top5Score} colour={colour} size={68} gold={index === 0} />
 
                 <dl className="col-span-3 grid grid-cols-3 gap-x-4 gap-y-3 sm:grid-cols-5 xl:col-span-1">
                   {category.statLabels.map((label, i) => (

@@ -68,7 +68,7 @@ export function Top5Tab({ data, league }: { data: Record<CategoryId, CategoryDat
     <div>
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h3 className="text-xl font-bold text-white">
+          <h3 className="text-display text-xl text-white">
             {league ? 'Current leaders' : 'The best in Europe right now'}
           </h3>
           <p className="text-sm text-gray-300">

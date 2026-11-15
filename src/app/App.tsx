@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trophy } from 'lucide-react';
+import { SiteLogo } from './components/SiteLogo';
 import { MatchesSection } from './components/MatchesSection';
 import { TopStatsSection } from './components/TopStatsSection';
 import { LeagueBadge } from './components/LeagueBadge';
@@ -56,7 +56,7 @@ const FOOTER_TEXT =
 function SiteFooter() {
   return (
     <footer className="border-t border-gray-800 bg-[#0d0d0d] px-4 py-5 sm:px-6 lg:px-8">
-      <p className="mx-auto max-w-[1800px] text-center text-xs leading-relaxed text-gray-500">
+      <p className="mx-auto max-w-[1800px] text-center text-xs leading-relaxed text-[#94a3b8]">
         {FOOTER_TEXT}
       </p>
     </footer>
@@ -81,12 +81,12 @@ export default function App() {
         <div className="relative z-10 flex min-h-screen flex-col">
         <div className="flex flex-1 items-center justify-center px-6 py-12">
           <div className="max-w-2xl rounded-3xl border border-white/10 bg-black/35 p-8 text-center shadow-2xl backdrop-blur-sm sm:p-12">
-            <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-[#f4c95d]/40 bg-[#f4c95d]/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.2em] text-[#f4c95d]">
-              <Trophy className="h-4 w-4" />
+            <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold uppercase tracking-[0.2em] text-[#94a3b8]">
+              <SiteLogo size={20} />
               Coming soon
             </div>
 
-            <h1 className="text-4xl font-black uppercase tracking-tight text-white sm:text-6xl">
+            <h1 className="text-display text-4xl text-white sm:text-6xl">
               Under Construction
             </h1>
 
@@ -119,8 +119,10 @@ export default function App() {
                   : 'bg-black hover:bg-gray-900'
               }`}
             >
-              <Trophy className="w-5 h-5 text-white" />
-              <span className="text-white font-semibold">Top5Stats</span>
+              <SiteLogo size={28} />
+              <span className="text-display text-white">
+                TOP<span style={{ color: '#f4c95d' }}>5</span>STATS
+              </span>
             </button>
 
             {/* League Tabs */}

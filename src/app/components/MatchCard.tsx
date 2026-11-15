@@ -43,7 +43,7 @@ function StatusLine({ match }: { match: NormalizedMatch }) {
 
 function StrengthBar({ value }: { value?: number }) {
   if (value === undefined) {
-    return <p className="mt-1 text-[9px] leading-none text-gray-600">No current data</p>;
+    return <p className="mt-1 text-[9px] leading-none text-[#94a3b8]">No current data</p>;
   }
   return (
     <div className="mt-1 flex items-center gap-1.5" title={`Strength ${value} of 100`}>

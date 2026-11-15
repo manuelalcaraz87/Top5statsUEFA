@@ -169,7 +169,7 @@ export function HowCalculated({ id, inCompetition }: { id: CategoryId; inCompeti
   }
   return (
     <div className="mt-6 rounded-lg border border-gray-800 bg-[#1a1a1a] p-4">
-      <h4 className="mb-2 text-sm font-medium text-gray-200">How this score is calculated</h4>
+      <h4 className="text-display mb-2 text-sm text-gray-200">How this score is calculated</h4>
       {sentences.map(text => (
         <p key={text} className="mb-2 text-sm text-gray-400">{text}</p>
       ))}
@@ -182,7 +182,7 @@ export function HowCalculated({ id, inCompetition }: { id: CategoryId; inCompeti
         ))}
       </dl>
       <div className="mt-3 border-t border-gray-800 pt-3">
-        <h5 className="mb-1 text-sm font-medium text-gray-200">Opponents faced</h5>
+        <h5 className="text-display mb-1 text-sm text-gray-200">Opponents faced</h5>
         <p className="mb-2 text-sm text-gray-400">{OPPONENTS_TEXT[id]}</p>
         <p className="text-sm text-gray-400">{OPPONENTS_NOTE}</p>
       </div>
@@ -211,7 +211,14 @@ export function CategoryTable({ category, data }: { category: Category; data: Ca
           <tbody>
             {entries.map((entry, index) => (
               <tr key={entry.key} className="border-b border-gray-800 transition-colors hover:bg-white/5">
-                <td className="px-2 py-3 text-sm text-gray-400">{index + 1}</td>
+                <td className="px-2 py-3">
+                  <span
+                    className="text-display inline-block min-w-[1.75rem] rounded-md px-1.5 text-center text-base text-gray-400"
+                    style={index === 0 ? { outline: '1px solid #f4c95d' } : undefined}
+                  >
+                    {index + 1}
+                  </span>
+                </td>
                 <td className="py-3">
                   <div className="flex items-center gap-2.5">
                     <ClubCrest club={entry.club} size={28} />
@@ -226,7 +233,7 @@ export function CategoryTable({ category, data }: { category: Category; data: Ca
                     </div>
                   </div>
                 </td>
-                <td className="px-2 py-3 text-center"><ScoreChip score={entry.top5Score} colour={category.colour} /></td>
+                <td className="px-2 py-3 text-center"><ScoreChip score={entry.top5Score} colour={category.colour} gold={index === 0} /></td>
                 <td className="px-2 py-3 text-center">
                   <OpponentsMeter level={entry.opponentsFaced} colour={category.colour} align="center" />
                 </td>

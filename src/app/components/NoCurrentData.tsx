@@ -11,7 +11,7 @@ export function NoCurrentData({ title, loading = false, compact = false }: {
   return (
     <div className={`bg-[#1a1a1a] rounded-lg border border-gray-800 ${compact ? 'p-3' : 'p-5'}`}>
       {title && <p className="text-gray-300 font-medium text-sm mb-1">{title}</p>}
-      <p className={`text-sm ${loading ? 'text-gray-600 italic' : 'text-gray-500'}`}>
+      <p className={`text-sm ${loading ? 'text-[#94a3b8] italic' : 'text-[#94a3b8]'}`}>
         {loading ? 'Loading…' : NO_CURRENT_DATA}
       </p>
     </div>
