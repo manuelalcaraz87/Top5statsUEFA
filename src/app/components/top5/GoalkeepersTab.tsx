@@ -1,7 +1,7 @@
 import { CATEGORIES, type CategoryData } from './top5Data';
-import { CategoryTable } from './shared';
+import { CategoryView } from './CategoryView';
 
-// Goalkeepers tab: top 5 goalkeepers table, then "How this score is calculated".
+// Goalkeepers tab: top 5 goalkeepers cards and charts, then "How this score is calculated".
 export function GoalkeepersTab({ data }: { data: CategoryData }) {
-  return <CategoryTable category={CATEGORIES.goalkeepers} data={data} />;
+  return <CategoryView category={CATEGORIES.goalkeepers} data={data} />;
 }

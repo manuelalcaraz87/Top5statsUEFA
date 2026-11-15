@@ -9,6 +9,14 @@ import { normalizeTeamName } from './footballDataService';
 export type ScoreCategory = 'club' | 'striker' | 'creator' | 'defender' | 'goalkeeper';
 export type ScoreList = 'overall' | 'england' | 'spain' | 'italy' | 'germany' | 'france' | 'champions-league';
 
+/** One ingredient of a Top5 Score: its weight (% of the score) and its own 0-100 score. */
+export interface Ingredient {
+  key: string;
+  label: string;
+  weight: number;
+  score: number;
+}
+
 export interface ScoreEntry {
   rank: number;
   name: string;
@@ -18,6 +26,10 @@ export interface ScoreEntry {
   score: number;
   opponentsFaced: 'Easy' | 'Average' | 'Hard' | string;
   stats: Record<string, string | number | null>;
+  /** What the score is made of. Missing in older copies of the file. */
+  ingredients?: Ingredient[];
+  /** Clubs in the "overall" list only: Champions League points added or removed; null when none. */
+  championsLeagueAdjustment?: number | null;
 }
 
 export interface ScoresFile {

@@ -1,8 +1,9 @@
 import { useLeagueData } from '../../hooks/useLeagueData';
 import {
   FILE_CATEGORY, chipForCompetition, clubScoreIndex, findClubScore, listForLeague, scoreList, useScores,
-  type ScoreEntry, type ScoreList, type ScoresFile,
+  type Ingredient, type ScoreEntry, type ScoreList, type ScoresFile,
 } from '../../services/scoresService';
+import { CATEGORY_COLOURS } from './categoryColours';
 
 // Shared data for the Top 5 area. Rankings, Top5 Scores and player stats come
 // from the site's scores file (see scoresService.ts); the full league table
@@ -24,6 +25,10 @@ export interface Top5Entry {
   opponentsFaced: string | null;
   /** Exactly five values, in the order of the category's statLabels. */
   stats: StatValue[];
+  /** What the score is made of (from the scores file); absent when unknown. */
+  ingredients?: Ingredient[] | null;
+  /** Champions League adjustment in points; set only for clubs in the overall list. */
+  clAdjustment?: number | null;
 }
 
 export interface CategoryData {
@@ -46,30 +51,44 @@ export type CategoryId = 'clubs' | 'strikers' | 'creators' | 'defenders' | 'goal
 export interface Category {
   id: CategoryId;
   label: string;
-  /** Singular label for the leader card, e.g. "Top club". */
+  /** Singular label for the leader card, e.g. "Club". */
   leaderLabel: string;
+  /** Lower-case singular noun, e.g. "striker", used in sentences. */
+  noun: string;
+  /** The site's own colour for this category (see categoryColours.ts). */
+  colour: string;
   statLabels: [string, string, string, string, string];
+  /**
+   * Per stat: true when a lower value is better, so its bar shows the lowest
+   * value as the full bar (minutes per goal, goals conceded).
+   */
+  lowerIsBetter: [boolean, boolean, boolean, boolean, boolean];
 }
 
 export const CATEGORIES: Record<CategoryId, Category> = {
   clubs: {
-    id: 'clubs', label: 'Clubs', leaderLabel: 'Clubs',
+    id: 'clubs', label: 'Clubs', leaderLabel: 'Club', noun: 'club', colour: CATEGORY_COLOURS.clubs,
+    lowerIsBetter: [false, false, false, true, false],
     statLabels: ['Points', 'Won–drawn–lost', 'Goals scored', 'Goals conceded', 'Clean sheets'],
   },
   strikers: {
-    id: 'strikers', label: 'Strikers', leaderLabel: 'Strikers',
+    id: 'strikers', label: 'Strikers', leaderLabel: 'Striker', noun: 'striker', colour: CATEGORY_COLOURS.strikers,
+    lowerIsBetter: [false, true, false, false, false],
     statLabels: ['Goals', 'Minutes per goal', 'Shots on target', 'Assists', 'Minutes played'],
   },
   creators: {
-    id: 'creators', label: 'Creators', leaderLabel: 'Creators',
+    id: 'creators', label: 'Creators', leaderLabel: 'Creator', noun: 'creator', colour: CATEGORY_COLOURS.creators,
+    lowerIsBetter: [false, false, false, false, false],
     statLabels: ['Assists', 'Key passes', 'Pass accuracy %', 'Successful dribbles', 'Minutes played'],
   },
   defenders: {
-    id: 'defenders', label: 'Defenders', leaderLabel: 'Defenders',
+    id: 'defenders', label: 'Defenders', leaderLabel: 'Defender', noun: 'defender', colour: CATEGORY_COLOURS.defenders,
+    lowerIsBetter: [false, false, false, false, false],
     statLabels: ['Tackles', 'Interceptions', 'Duels won %', 'Blocks', 'Team clean sheets'],
   },
   goalkeepers: {
-    id: 'goalkeepers', label: 'Goalkeepers', leaderLabel: 'Goalkeepers',
+    id: 'goalkeepers', label: 'Goalkeepers', leaderLabel: 'Goalkeeper', noun: 'goalkeeper', colour: CATEGORY_COLOURS.goalkeepers,
+    lowerIsBetter: [false, false, false, true, false],
     statLabels: ['Saves', 'Save %', 'Clean sheets', 'Goals conceded per match', 'Penalties saved'],
   },
 };
@@ -105,6 +124,8 @@ function entryFromFile(id: CategoryId, e: ScoreEntry, listKey: string): Top5Entr
     top5Score: e.score,
     opponentsFaced: e.opponentsFaced ?? null,
     stats: STAT_KEYS[id].map(k => e.stats?.[k] ?? null),
+    ingredients: e.ingredients ?? null,
+    clAdjustment: e.championsLeagueAdjustment ?? null,
   };
 }
 

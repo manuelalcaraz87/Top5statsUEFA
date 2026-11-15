@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ClubCrest } from '../ClubCrest';
 import { LeagueBadge } from '../LeagueBadge';
-import { NoCurrentData } from '../NoCurrentData';
+import { OpponentsMeter, ScoreChip } from './charts';
 import type { Category, CategoryData, CategoryId, StatValue } from './top5Data';
 
 // Building blocks shared by the Top 5 tabs.
@@ -12,19 +12,10 @@ export function formatStat(value: StatValue): string {
   return value === null || value === '' ? DASH : String(value);
 }
 
-/** Top5 Score with one decimal; "–" when a club has no score. */
-export function ScoreValue({ score, large = false }: { score: number | null; large?: boolean }) {
-  return (
-    <p className={`font-bold tabular-nums text-white ${large ? 'text-center text-4xl' : 'text-base'}`}>
-      {score === null ? DASH : score.toFixed(1)}
-    </p>
-  );
-}
-
 /** When the scores file was generated, in the visitor's local time. */
 export function LastUpdated({ time }: { time: Date | null }) {
   return (
-    <p className="text-xs text-gray-500">
+    <p className="text-xs text-gray-300">
       Last updated{' '}
       {time ? time.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : DASH}
     </p>
@@ -161,7 +152,7 @@ const HOW_CALCULATED: Record<CategoryId, { sentences: string[]; weights: [string
   },
 };
 
-function HowCalculated({ id, inCompetition }: { id: CategoryId; inCompetition: boolean }) {
+export function HowCalculated({ id, inCompetition }: { id: CategoryId; inCompetition: boolean }) {
   const { sentences: homeSentences, weights } = HOW_CALCULATED[id];
   let sentences = homeSentences;
   if (id === 'clubs') {
@@ -199,83 +190,63 @@ function HowCalculated({ id, inCompetition }: { id: CategoryId; inCompetition: b
   );
 }
 
-/** One category tab: top-5 table, last-updated time and the explanation panel. */
-export function CategoryTable({ category, data, title }: {
-  category: Category;
-  data: CategoryData;
-  /** Heading above the table; defaults to "Top 5 <category>". */
-  title?: string;
-}) {
-  const { entries, loading, lastUpdated, tableAsOf, checkingLive } = data;
+/** The league / competition table (Clubs tab on a league page): a compact table with a small score chip. */
+export function CategoryTable({ category, data }: { category: Category; data: CategoryData }) {
+  const { entries, tableAsOf, checkingLive } = data;
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-gray-100">{title ?? `Top 5 ${category.label}`}</h3>
-        <LastUpdated time={lastUpdated} />
-      </div>
-
-      {entries.length === 0 ? (
-        <NoCurrentData loading={loading} />
-      ) : (
-        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <table className="w-full min-w-[840px]">
-            <thead>
-              <tr className="border-b border-gray-800 text-xs text-gray-500">
-                <th className="px-2 pb-3 text-left font-normal">#</th>
-                <th className="pb-3 text-left font-normal">Name</th>
-                <th className="px-2 pb-3 text-center font-normal">Top5 Score</th>
-                <th className="px-2 pb-3 text-center font-normal">Opponents faced<OpponentsInfo /></th>
-                {category.statLabels.map(label => (
-                  <th key={label} className="px-2 pb-3 text-center font-normal">{label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry, index) => (
-                <tr key={entry.key} className="border-b border-gray-800 transition-colors hover:bg-white/5">
-                  <td className="px-2 py-3 text-sm text-gray-400">{index + 1}</td>
-                  <td className="py-3">
-                    <div className="flex items-center gap-2.5">
-                      <ClubCrest club={entry.club} size={28} />
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-gray-100">{entry.name}</p>
-                        <div className="mt-0.5 flex items-center gap-1.5">
-                          {entry.club !== entry.name && (
-                            <span className="truncate text-xs text-gray-400">{entry.club}</span>
-                          )}
-                          <LeagueBadge league={entry.league} size={16} />
-                        </div>
+      <div className="relative -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <table className="w-full min-w-[840px]">
+          <thead>
+            <tr className="border-b border-gray-800 text-xs text-gray-400">
+              <th className="px-2 pb-3 text-left font-normal">#</th>
+              <th className="pb-3 text-left font-normal">Name</th>
+              <th className="px-2 pb-3 text-center font-normal">Top5 Score</th>
+              <th className="px-2 pb-3 text-center font-normal">Opponents faced<OpponentsInfo /></th>
+              {category.statLabels.map(label => (
+                <th key={label} className="px-2 pb-3 text-center font-normal">{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry, index) => (
+              <tr key={entry.key} className="border-b border-gray-800 transition-colors hover:bg-white/5">
+                <td className="px-2 py-3 text-sm text-gray-400">{index + 1}</td>
+                <td className="py-3">
+                  <div className="flex items-center gap-2.5">
+                    <ClubCrest club={entry.club} size={28} />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-gray-100">{entry.name}</p>
+                      <div className="mt-0.5 flex items-center gap-1.5">
+                        {entry.club !== entry.name && (
+                          <span className="truncate text-xs text-gray-400">{entry.club}</span>
+                        )}
+                        <LeagueBadge league={entry.league} size={16} />
                       </div>
                     </div>
+                  </div>
+                </td>
+                <td className="px-2 py-3 text-center"><ScoreChip score={entry.top5Score} colour={category.colour} /></td>
+                <td className="px-2 py-3 text-center">
+                  <OpponentsMeter level={entry.opponentsFaced} colour={category.colour} align="center" />
+                </td>
+                {entry.stats.map((value, i) => (
+                  <td key={i} className="px-2 py-3 text-center text-sm tabular-nums text-gray-200">
+                    {formatStat(value)}
                   </td>
-                  <td className="px-2 py-3 text-center"><ScoreValue score={entry.top5Score} /></td>
-                  <td className="px-2 py-3 text-center text-sm text-gray-200">{entry.opponentsFaced ?? DASH}</td>
-                  {entry.stats.map((value, i) => (
-                    <td key={i} className="px-2 py-3 text-center text-sm tabular-nums text-gray-200">
-                      {formatStat(value)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      {tableAsOf && entries.length > 0 && (
-        <p className="mt-3 text-xs text-gray-500">
+      {tableAsOf && (
+        <p className="mt-3 text-xs text-gray-400">
           Table as of {tableAsOf.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
           {checkingLive ? '. Checking for live numbers…' : ''}
         </p>
       )}
-
-      {data.league && category.id !== 'clubs' && entries.length > 0 && (
-        <p className="mt-3 text-xs text-gray-500">
-          A player's score here can differ from the home page, which compares all five leagues.
-        </p>
-      )}
-
-      <HowCalculated id={category.id} inCompetition={Boolean(data.league)} />
     </div>
   );
 }
