@@ -3,7 +3,7 @@ import { ClubCrest } from '../ClubCrest';
 import { LeagueBadge } from '../LeagueBadge';
 import { OpponentsMeter, ScoreChip } from './charts';
 import { StreakBadge } from './StreakBadge';
-import { FILE_CATEGORY, useScores } from '../../services/scoresService';
+import { FILE_CATEGORY, formatWeight, listForLeague, useScores } from '../../services/scoresService';
 import type { Ingredient, ScoresFile } from '../../services/scoresService';
 import type { Category, CategoryData, CategoryId, StatValue } from './top5Data';
 
@@ -144,19 +144,16 @@ const HOW_CALCULATED: Record<CategoryId, { sentences: string[] }> = {
   },
 };
 
-/** The ingredients (name + weight) of the first entry of a category in the scores file, or null if unavailable. */
-function liveIngredients(scores: ScoresFile | null, id: CategoryId): Ingredient[] | null {
-  const lists = scores?.categories?.[FILE_CATEGORY[id]];
-  const first = lists?.overall?.[0] ?? Object.values(lists ?? {}).find(list => list && list.length)?.[0];
+/** The ingredients (name + weight) of the first entry of this category on this page's list in the scores file, or null if unavailable. */
+function liveIngredients(scores: ScoresFile | null, id: CategoryId, leagueId?: string): Ingredient[] | null {
+  const first = scores?.categories?.[FILE_CATEGORY[id]]?.[listForLeague(leagueId)]?.[0];
   return first?.ingredients?.length ? first.ingredients : null;
 }
 
-const formatWeight = (weight: number) => `${Number(weight.toFixed(2))}%`;
-
-export function HowCalculated({ id, inCompetition }: { id: CategoryId; inCompetition: boolean }) {
+export function HowCalculated({ id, inCompetition, leagueId }: { id: CategoryId; inCompetition: boolean; leagueId?: string }) {
   const { sentences: homeSentences } = HOW_CALCULATED[id];
   const { scores } = useScores();
-  const ingredients = liveIngredients(scores, id);
+  const ingredients = liveIngredients(scores, id, leagueId);
   let sentences = homeSentences;
   if (id === 'clubs') {
     sentences = [
