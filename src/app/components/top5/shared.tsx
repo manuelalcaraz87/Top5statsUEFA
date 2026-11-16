@@ -3,6 +3,8 @@ import { ClubCrest } from '../ClubCrest';
 import { LeagueBadge } from '../LeagueBadge';
 import { OpponentsMeter, ScoreChip } from './charts';
 import { StreakBadge } from './StreakBadge';
+import { FILE_CATEGORY, useScores } from '../../services/scoresService';
+import type { Ingredient, ScoresFile } from '../../services/scoresService';
 import type { Category, CategoryData, CategoryId, StatValue } from './top5Data';
 
 // Building blocks shared by the Top 5 tabs.
@@ -124,37 +126,37 @@ const OPPONENTS_TEXT: Record<CategoryId, string> = {
 };
 const OPPONENTS_NOTE = 'It describes the schedule, not the performance, and it evens out as the season goes on.';
 
-const HOW_CALCULATED: Record<CategoryId, { sentences: string[]; weights: [string, string][] }> = {
+const HOW_CALCULATED: Record<CategoryId, { sentences: string[] }> = {
   clubs: {
     sentences: [CLUB_SENTENCE],
-    weights: [['League points per game', '50%'], ['Goal difference per game', '31%'], ['Last five league matches', '19%']],
   },
   strikers: {
     sentences: PLAYER_SENTENCES,
-    weights: [
-      ['Goals per 90 (a penalty counts as half)', '50%'], ['Shots on target per 90', '20%'],
-      ['Assists per 90', '15%'], ['Key passes per 90', '15%'],
-    ],
   },
   creators: {
     sentences: PLAYER_SENTENCES,
-    weights: [['Assists per 90', '55%'], ['Key passes per 90', '45%']],
   },
   defenders: {
     sentences: PLAYER_SENTENCES,
-    weights: [
-      ['Team goals conceded while he plays', '35%'], ['Tackles + interceptions per 90', '25%'],
-      ['Duels won %', '20%'], ['Goals + assists per 90', '10%'], ['Blocks per 90', '5%'], ['Fouls and cards', '5%'],
-    ],
   },
   goalkeepers: {
     sentences: PLAYER_SENTENCES,
-    weights: [['Save %', '45%'], ['Goals conceded per 90', '30%'], ['Clean-sheet rate', '15%'], ['Saves per 90', '10%']],
   },
 };
 
+/** The ingredients (name + weight) of the first entry of a category in the scores file, or null if unavailable. */
+function liveIngredients(scores: ScoresFile | null, id: CategoryId): Ingredient[] | null {
+  const lists = scores?.categories?.[FILE_CATEGORY[id]];
+  const first = lists?.overall?.[0] ?? Object.values(lists ?? {}).find(list => list && list.length)?.[0];
+  return first?.ingredients?.length ? first.ingredients : null;
+}
+
+const formatWeight = (weight: number) => `${Number(weight.toFixed(2))}%`;
+
 export function HowCalculated({ id, inCompetition }: { id: CategoryId; inCompetition: boolean }) {
-  const { sentences: homeSentences, weights } = HOW_CALCULATED[id];
+  const { sentences: homeSentences } = HOW_CALCULATED[id];
+  const { scores } = useScores();
+  const ingredients = liveIngredients(scores, id);
   let sentences = homeSentences;
   if (id === 'clubs') {
     sentences = [
@@ -174,14 +176,16 @@ export function HowCalculated({ id, inCompetition }: { id: CategoryId; inCompeti
       {sentences.map(text => (
         <p key={text} className="mb-2 text-sm text-gray-400">{text}</p>
       ))}
-      <dl className="mt-3 space-y-1.5 border-t border-gray-800 pt-3">
-        {weights.map(([label, pct]) => (
-          <div key={label} className="flex items-baseline justify-between gap-3 text-sm">
-            <dt className="text-gray-400">{label}</dt>
-            <dd className="tabular-nums text-gray-100">{pct}</dd>
-          </div>
-        ))}
-      </dl>
+      {ingredients && (
+        <dl className="mt-3 space-y-1.5 border-t border-gray-800 pt-3">
+          {ingredients.map(({ key, label, weight }) => (
+            <div key={key} className="flex items-baseline justify-between gap-3 text-sm">
+              <dt className="text-gray-400">{label}</dt>
+              <dd className="tabular-nums text-gray-100">{formatWeight(weight)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
       <div className="mt-3 border-t border-gray-800 pt-3">
         <h5 className="text-display mb-1 text-sm text-gray-200">Opponents faced</h5>
         <p className="mb-2 text-sm text-gray-400">{OPPONENTS_TEXT[id]}</p>
