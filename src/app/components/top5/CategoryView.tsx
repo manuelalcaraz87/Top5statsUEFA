@@ -2,18 +2,20 @@ import { NoCurrentData } from '../NoCurrentData';
 import { RankedCards } from './RankedCards';
 import { CategoryTable, HowCalculated, LastUpdated } from './shared';
 import { withAlpha } from './categoryColours';
-import type { Category, CategoryData } from './top5Data';
+import { homeClubsCategory, type Category, type CategoryData } from './top5Data';
 
 // One category tab: the colour-tinted header band, then the ranked cards with
 // their charts (or, for the Clubs table on a league page, the compact table),
 // then "How this score is calculated".
-export function CategoryView({ category, data, title }: {
+export function CategoryView({ category: baseCategory, data, title }: {
   category: Category;
   data: CategoryData;
   /** Heading in the band; defaults to "Top 5 <category>". */
   title?: string;
 }) {
   const { entries, loading, lastUpdated, league } = data;
+  // On the home page the five club stats are league numbers, so they are labelled that way.
+  const category = baseCategory.id === 'clubs' && !league ? homeClubsCategory() : baseCategory;
   const showTable = Boolean(league) && category.id === 'clubs';
   return (
     <div>
@@ -35,7 +37,7 @@ export function CategoryView({ category, data, title }: {
       ) : showTable ? (
         <CategoryTable category={category} data={data} />
       ) : (
-        <RankedCards category={category} entries={entries} />
+        <RankedCards category={category} entries={entries} lastFiveLabel={league?.id === 'ucl' ? 'Last five matches' : 'Last five league matches'} />
       )}
 
       {league && category.id !== 'clubs' && entries.length > 0 && (
