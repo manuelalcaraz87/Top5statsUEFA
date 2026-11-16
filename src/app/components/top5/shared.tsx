@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ClubCrest } from '../ClubCrest';
 import { LeagueBadge } from '../LeagueBadge';
 import { OpponentsMeter, ScoreChip } from './charts';
+import { StreakBadge } from './StreakBadge';
 import type { Category, CategoryData, CategoryId, StatValue } from './top5Data';
 
 // Building blocks shared by the Top 5 tabs.
@@ -186,6 +187,10 @@ export function HowCalculated({ id, inCompetition }: { id: CategoryId; inCompeti
         <p className="mb-2 text-sm text-gray-400">{OPPONENTS_TEXT[id]}</p>
         <p className="text-sm text-gray-400">{OPPONENTS_NOTE}</p>
       </div>
+      <div className="mt-3 border-t border-gray-800 pt-3">
+        <h5 className="text-display mb-1 text-sm text-gray-200">Streak badges</h5>
+        <p className="text-sm text-gray-400">A badge marks a current run, such as goals in three or more appearances in a row. Badges use real match results and never change the Top5 Score.</p>
+      </div>
     </div>
   );
 }
@@ -230,6 +235,7 @@ export function CategoryTable({ category, data }: { category: Category; data: Ca
                         )}
                         <LeagueBadge league={entry.league} size={16} />
                       </div>
+                      {entry.badge && <div className="mt-1"><StreakBadge badge={entry.badge} colour={category.colour} /></div>}
                     </div>
                   </div>
                 </td>
