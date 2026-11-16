@@ -109,7 +109,7 @@ const STAT_KEYS: Record<CategoryId, [string, string, string, string, string]> = 
 /** A single competition to show instead of the five leagues combined. */
 export interface Top5League {
   id: string;
-  /** Short name used by the league text chip, e.g. "EPL" or "UCL". */
+  /** Short name used by the league text chip, e.g. "Premier League" or "Champions League". */
   name: string;
   /** Full name for headings, e.g. "Premier League". */
   label?: string;

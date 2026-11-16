@@ -8,7 +8,7 @@ import { LEAGUES } from '../data/leagueData';
 
 interface League {
   id: string;
-  /** Short name, e.g. "EPL" or "UCL" (used by the text chip and the data). */
+  /** Short name, e.g. "Premier League" or "Champions League" (used by the text chip and the data). */
   name: string;
   /** Full name for the heading, e.g. "Premier League". */
   label?: string;

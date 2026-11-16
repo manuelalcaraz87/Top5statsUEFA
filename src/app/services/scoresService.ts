@@ -67,7 +67,7 @@ export const DOMESTIC_LISTS: ScoreList[] = ['england', 'spain', 'italy', 'german
 
 /** Competition name in the file -> the short name the site's league chip uses. */
 export function chipForCompetition(competition: string): string {
-  return competition === 'Premier League' ? 'EPL' : competition;
+  return competition;
 }
 
 // ── Loading (once per visit) ─────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 // football-data.org v4 — primary data source
-// Free tier: top 5 European leagues + UCL, 10 req/min, no daily cap
+// Free tier: top 5 European leagues + Champions League, 10 req/min, no daily cap
 //
 // Using backend proxy server to handle CORS and keep tokens secure.
 // The proxy server routes requests to the real API with proper authentication.
@@ -20,12 +20,12 @@ export const LEAGUE_CODES: Record<string, string> = {
 };
 
 export const COMP_CODE_TO_LEAGUE: Record<string, { name: string; id: string; color: string }> = {
-  'PL':  { name: 'EPL',        id: 'epl',        color: '#94a3b8' },
+  'PL':  { name: 'Premier League',        id: 'epl',        color: '#94a3b8' },
   'PD':  { name: 'La Liga',    id: 'la-liga',    color: '#94a3b8' },
   'SA':  { name: 'Serie A',    id: 'serie-a',    color: '#94a3b8' },
   'BL1': { name: 'Bundesliga', id: 'bundesliga', color: '#94a3b8' },
   'FL1': { name: 'Ligue 1',   id: 'ligue-1',    color: '#94a3b8' },
-  'CL':  { name: 'UCL',        id: 'ucl',        color: '#94a3b8' },
+  'CL':  { name: 'Champions League',        id: 'ucl',        color: '#94a3b8' },
 };
 
 // ── Team name normalization ────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ const TEAM_MAP: Record<string, string> = {
   'CA Osasuna': 'Osasuna',
   'Celta de Vigo': 'Celta Vigo',
   'RC Celta de Vigo': 'Celta Vigo',
-  // EPL
+  // Premier League
   'Manchester City FC': 'Man City',
   'Manchester City': 'Man City',
   'Arsenal FC': 'Arsenal',
@@ -339,10 +339,12 @@ const isoDay = (daysFromToday: number) =>
   new Date(Date.now() + daysFromToday * 86_400_000).toISOString().slice(0, 10);
 
 /**
- * The home page's matches for all six competitions in ONE request: every match
- * from 2 days ago to 7 days ahead. No standings are needed. For each
- * competition we then keep a single round (the earliest one that still has a
- * match that is live, to come, or finished today), as on the league pages.
+ * The home page's matches for all six competitions. One request lists every
+ * match from 2 days ago to 7 days ahead; from it we find, per competition, the
+ * round to show (the earliest one that still has a match that is live, to come,
+ * or finished today, as on the league pages). That window can cut a round in
+ * half, so each competition's round is then fetched in full (the same request
+ * its own page makes), so the home page shows exactly the same matches.
  */
 export async function fetchHomeMatches(): Promise<NormalizedMatch[]> {
   const data = await get<{ matches: Record<string, unknown>[] }>('matches', {
@@ -352,13 +354,20 @@ export async function fetchHomeMatches(): Promise<NormalizedMatch[]> {
   });
   const all = (data.matches ?? []).map(normalizeMatch);
 
-  return Object.keys(LEAGUE_CODES).flatMap(leagueId => {
-    const own = all.filter(m => m.leagueId === leagueId);
-    const firstRelevant = own
+  const rounds = Object.keys(LEAGUE_CODES).flatMap(leagueId => {
+    const firstRelevant = all
+      .filter(m => m.leagueId === leagueId && m.matchday != null)
       .filter(m => m.status !== 'finished' || isToday(m.utcDate))
       .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime())[0];
-    return firstRelevant ? own.filter(m => m.matchday === firstRelevant.matchday) : [];
+    return firstRelevant ? [{ code: LEAGUE_CODES[leagueId], matchday: firstRelevant.matchday as number }] : [];
   });
+
+  const results = await Promise.allSettled(rounds.map(r => fetchMatchday(r.code, r.matchday)));
+  const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+  if (rounds.length > 0 && failed.length === rounds.length) throw failed[0].reason;
+  // A round that could not be fetched in full is left out rather than shown half-empty.
+  failed.forEach(r => console.warn('[matches] one competition failed:', r.reason));
+  return results.flatMap(r => (r.status === 'fulfilled' ? r.value : []));
 }
 
 export interface StandingsResult {
