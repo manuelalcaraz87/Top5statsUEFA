@@ -30,6 +30,8 @@ export interface ScoreEntry {
   ingredients?: Ingredient[];
   /** Clubs in the "overall" list only: Champions League points added or removed; null when none. */
   championsLeagueAdjustment?: number | null;
+  /** Current streak badges. Missing in older copies of the file. */
+  badges?: { key: string; count: number; label: string; detail: string }[];
 }
 
 export interface ScoresFile {

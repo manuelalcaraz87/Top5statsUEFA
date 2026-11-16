@@ -3,6 +3,7 @@ import { LeagueBadge } from '../LeagueBadge';
 import { NoCurrentData } from '../NoCurrentData';
 import { CATEGORIES, CATEGORY_ORDER, type CategoryData, type CategoryId, type Top5Entry, type Category, type Top5League } from './top5Data';
 import { LastUpdated, OpponentsInfo, formatStat } from './shared';
+import { StreakBadge } from './StreakBadge';
 import { OpponentsMeter, ScoreRing } from './charts';
 
 // Top 5 tab: one card per category showing the current leader.
@@ -33,6 +34,7 @@ function LeaderCard({ category, leader, loading }: { category: Category; leader?
             <div className="min-w-0">
               <p className="truncate font-semibold text-white">{leader.name}</p>
               {leader.club !== leader.name && <p className="truncate text-xs text-gray-300">{leader.club}</p>}
+              {leader.badge && <div className="mt-1"><StreakBadge badge={leader.badge} colour={category.colour} /></div>}
             </div>
           </div>
 

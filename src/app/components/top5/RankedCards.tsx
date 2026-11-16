@@ -3,6 +3,7 @@ import { LeagueBadge } from '../LeagueBadge';
 import { OpponentsMeter, ScoreRing, ThinBar, statBarFractions } from './charts';
 import { WherePanel, WhyPanel } from './panels';
 import { OpponentsInfo, formatStat } from './shared';
+import { StreakBadge } from './StreakBadge';
 import type { Category, Top5Entry } from './top5Data';
 
 // The ranked cards for a category, with the two side panels beside them (below
@@ -63,11 +64,12 @@ export function RankedCards({ category, entries }: { category: Category; entries
                     {entry.name}
                     <span className="sr-only">, show why this score</span>
                   </button>
-                  <div className="mt-1 flex items-center gap-1.5">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
                     <LeagueBadge league={entry.league} size={18} />
                     {entry.club !== entry.name && (
                       <span className="truncate text-xs text-gray-300">{entry.club}</span>
                     )}
+                    <StreakBadge badge={entry.badge} colour={colour} />
                   </div>
                 </div>
 

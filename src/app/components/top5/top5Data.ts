@@ -29,6 +29,8 @@ export interface Top5Entry {
   ingredients?: Ingredient[] | null;
   /** Champions League adjustment in points; set only for clubs in the overall list. */
   clAdjustment?: number | null;
+  /** The first streak badge from the scores file; null when there is none. */
+  badge: { label: string; detail: string } | null;
 }
 
 export interface CategoryData {
@@ -115,6 +117,12 @@ export interface Top5League {
   label?: string;
 }
 
+/** The first streak badge of a scores-file entry, or null. */
+function firstBadge(e?: ScoreEntry): { label: string; detail: string } | null {
+  const b = e?.badges?.[0];
+  return b ? { label: b.label, detail: b.detail } : null;
+}
+
 function entryFromFile(id: CategoryId, e: ScoreEntry, listKey: string): Top5Entry {
   return {
     key: `${listKey}-${id}-${e.rank}-${e.name}`,
@@ -126,6 +134,7 @@ function entryFromFile(id: CategoryId, e: ScoreEntry, listKey: string): Top5Entr
     stats: STAT_KEYS[id].map(k => e.stats?.[k] ?? null),
     ingredients: e.ingredients ?? null,
     clAdjustment: e.championsLeagueAdjustment ?? null,
+    badge: firstBadge(e),
   };
 }
 
@@ -156,6 +165,7 @@ function clubsFromFile(scores: ScoresFile | null, league: Top5League, listKey: S
         top5Score: e.score,
         opponentsFaced: e.opponentsFaced ?? null,
         stats: [points, e.stats?.wonDrawnLost ?? null, scored, conceded, fileNumber(e.stats?.cleanSheets)],
+        badge: firstBadge(e),
       } satisfies Top5Entry,
     };
   });
@@ -206,6 +216,7 @@ export function useTop5Data(league?: Top5League): Record<CategoryId, CategoryDat
         opponentsFaced: hit?.opponentsFaced ?? null,
         // Clean sheets are not in the live table, so they come from the file.
         stats: [s.points, `${s.won}–${s.drawn}–${s.lost}`, s.gf, s.ga, fileNumber(hit?.stats?.cleanSheets)],
+        badge: firstBadge(hit),
       };
     });
   } else {
