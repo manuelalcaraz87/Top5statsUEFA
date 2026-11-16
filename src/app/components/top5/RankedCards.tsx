@@ -4,13 +4,14 @@ import { OpponentsMeter, ScoreRing, ThinBar, statBarFractions } from './charts';
 import { WherePanel, WhyPanel } from './panels';
 import { OpponentsInfo, formatStat } from './shared';
 import { StreakBadge } from './StreakBadge';
+import { ClubExtras } from './ClubExtras';
 import type { Category, Top5Entry } from './top5Data';
 
 // The ranked cards for a category, with the two side panels beside them (below
 // them on a phone). Choosing a card (click, or Enter / Space on its name)
 // switches "Why this score" to that card. The first card is chosen at first.
 
-export function RankedCards({ category, entries }: { category: Category; entries: Top5Entry[] }) {
+export function RankedCards({ category, entries, lastFiveLabel = 'Last five league matches' }: { category: Category; entries: Top5Entry[]; lastFiveLabel?: string }) {
   const [chosenKey, setChosenKey] = useState<string | null>(null);
   const chosenIndex = Math.max(0, entries.findIndex(e => e.key === chosenKey));
   const chosen = entries[chosenIndex];
@@ -96,6 +97,12 @@ export function RankedCards({ category, entries }: { category: Category; entries
                   </p>
                   <OpponentsMeter level={entry.opponentsFaced} colour={colour} />
                 </div>
+
+                {category.id === 'clubs' && (entry.form || entry.championsLeague) && (
+                  <div className="col-span-3 border-t border-[#2a2a2a] pt-3 xl:col-span-5">
+                    <ClubExtras entry={entry} lastFiveLabel={lastFiveLabel} />
+                  </div>
+                )}
               </div>
             </li>
           );

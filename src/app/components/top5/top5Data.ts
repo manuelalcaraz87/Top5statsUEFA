@@ -31,6 +31,10 @@ export interface Top5Entry {
   clAdjustment?: number | null;
   /** The first streak badge from the scores file; null when there is none. */
   badge: { label: string; detail: string } | null;
+  /** Clubs only: last results, oldest first (W, D or L); null when unknown. */
+  form: string[] | null;
+  /** Home page clubs only: Champions League record and points; null otherwise. */
+  championsLeague: { record: string; points: number } | null;
 }
 
 export interface CategoryData {
@@ -95,6 +99,14 @@ export const CATEGORIES: Record<CategoryId, Category> = {
   },
 };
 
+/** The Clubs category as shown on the home page: its five stats are league numbers. */
+export function homeClubsCategory(): Category {
+  return {
+    ...CATEGORIES.clubs,
+    statLabels: ['League points', 'League record', 'League goals scored', 'League goals conceded', 'League clean sheets'],
+  };
+}
+
 export const CATEGORY_ORDER: CategoryId[] = ['clubs', 'strikers', 'creators', 'defenders', 'goalkeepers'];
 
 const TOP_N = 5;
@@ -123,7 +135,12 @@ function firstBadge(e?: ScoreEntry): { label: string; detail: string } | null {
   return b ? { label: b.label, detail: b.detail } : null;
 }
 
-function entryFromFile(id: CategoryId, e: ScoreEntry, listKey: string): Top5Entry {
+/** A club's last results from the scores file, or null. */
+function fileForm(e?: ScoreEntry): string[] | null {
+  return e?.form && e.form.length > 0 ? [...e.form] : null;
+}
+
+function entryFromFile(id: CategoryId, e: ScoreEntry, listKey: string, championsLeague: Top5Entry['championsLeague'] = null): Top5Entry {
   return {
     key: `${listKey}-${id}-${e.rank}-${e.name}`,
     name: e.name,
@@ -135,6 +152,8 @@ function entryFromFile(id: CategoryId, e: ScoreEntry, listKey: string): Top5Entr
     ingredients: e.ingredients ?? null,
     clAdjustment: e.championsLeagueAdjustment ?? null,
     badge: firstBadge(e),
+    form: id === 'clubs' ? fileForm(e) : null,
+    championsLeague: id === 'clubs' ? championsLeague : null,
   };
 }
 
@@ -166,6 +185,8 @@ function clubsFromFile(scores: ScoresFile | null, league: Top5League, listKey: S
         opponentsFaced: e.opponentsFaced ?? null,
         stats: [points, e.stats?.wonDrawnLost ?? null, scored, conceded, fileNumber(e.stats?.cleanSheets)],
         badge: firstBadge(e),
+        form: fileForm(e),
+        championsLeague: null,
       } satisfies Top5Entry,
     };
   });
@@ -188,8 +209,20 @@ export function useTop5Data(league?: Top5League): Record<CategoryId, CategoryDat
   const generatedAt = scores ? new Date(scores.generatedAt) : null;
   const lastUpdated = generatedAt && !Number.isNaN(generatedAt.getTime()) ? generatedAt : null;
 
+  // Home page only: each club's Champions League record, from the file's Champions League club list.
+  const clIndex = !league && scores ? clubScoreIndex(scores, ['champions-league']) : null;
+  const clRecord = (id: CategoryId, e: ScoreEntry): Top5Entry['championsLeague'] => {
+    if (id !== 'clubs' || !clIndex) return null;
+    const hit = findClubScore(clIndex, e.name);
+    const record = hit?.stats?.wonDrawnLost;
+    const points = fileNumber(hit?.stats?.points);
+    return hit && record !== null && record !== undefined && record !== '' && points !== null
+      ? { record: String(record), points }
+      : null;
+  };
+
   const fromFile = (id: CategoryId): Top5Entry[] =>
-    scoreList(scores, FILE_CATEGORY[id], listKey).slice(0, TOP_N).map(e => entryFromFile(id, e, listKey));
+    scoreList(scores, FILE_CATEGORY[id], listKey).slice(0, TOP_N).map(e => entryFromFile(id, e, listKey, clRecord(id, e)));
 
   // Clubs on a league page: the whole table, in table order.
   let clubs: Top5Entry[];
@@ -217,6 +250,8 @@ export function useTop5Data(league?: Top5League): Record<CategoryId, CategoryDat
         // Clean sheets are not in the live table, so they come from the file.
         stats: [s.points, `${s.won}–${s.drawn}–${s.lost}`, s.gf, s.ga, fileNumber(hit?.stats?.cleanSheets)],
         badge: firstBadge(hit),
+        form: fileForm(hit),
+        championsLeague: null,
       };
     });
   } else {

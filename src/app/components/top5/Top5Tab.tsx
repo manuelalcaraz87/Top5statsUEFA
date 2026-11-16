@@ -1,14 +1,15 @@
 import { ClubCrest } from '../ClubCrest';
 import { LeagueBadge } from '../LeagueBadge';
 import { NoCurrentData } from '../NoCurrentData';
-import { CATEGORIES, CATEGORY_ORDER, type CategoryData, type CategoryId, type Top5Entry, type Category, type Top5League } from './top5Data';
+import { CATEGORIES, CATEGORY_ORDER, type CategoryData, type CategoryId, type Top5Entry, type Category, type Top5League, homeClubsCategory } from './top5Data';
 import { LastUpdated, OpponentsInfo, formatStat } from './shared';
 import { StreakBadge } from './StreakBadge';
+import { ClubExtras } from './ClubExtras';
 import { OpponentsMeter, ScoreRing } from './charts';
 
 // Top 5 tab: one card per category showing the current leader.
 
-function LeaderCard({ category, leader, loading }: { category: Category; leader?: Top5Entry; loading: boolean }) {
+function LeaderCard({ category, leader, loading, lastFiveLabel }: { category: Category; leader?: Top5Entry; loading: boolean; lastFiveLabel: string }) {
   return (
     <div
       className="flex flex-col rounded-xl border border-[#2a2c33] border-t-4 bg-[#16181d] p-4"
@@ -56,6 +57,12 @@ function LeaderCard({ category, leader, loading }: { category: Category; leader?
               </div>
             ))}
           </dl>
+
+          {category.id === 'clubs' && (leader.form || leader.championsLeague) && (
+            <div className="mt-3 border-t border-[#2a2a2a] pt-3">
+              <ClubExtras entry={leader} lastFiveLabel={lastFiveLabel} />
+            </div>
+          )}
         </>
       )}
     </div>
@@ -83,7 +90,13 @@ export function Top5Tab({ data, league }: { data: Record<CategoryId, CategoryDat
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {CATEGORY_ORDER.map(id => (
-          <LeaderCard key={id} category={CATEGORIES[id]} leader={data[id].entries[0]} loading={data[id].loading} />
+          <LeaderCard
+            key={id}
+            category={id === 'clubs' && !league ? homeClubsCategory() : CATEGORIES[id]}
+            leader={data[id].entries[0]}
+            loading={data[id].loading}
+            lastFiveLabel={league?.id === 'ucl' ? 'Last five matches' : 'Last five league matches'}
+          />
         ))}
       </div>
     </div>

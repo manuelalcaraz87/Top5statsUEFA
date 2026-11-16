@@ -31,6 +31,8 @@ export interface ScoreEntry {
   /** Clubs in the "overall" list only: Champions League points added or removed; null when none. */
   championsLeagueAdjustment?: number | null;
   /** Current streak badges. Missing in older copies of the file. */
+  /** Clubs only: last results, oldest first, most recent last. Missing in older copies of the file. */
+  form?: ('W' | 'D' | 'L')[];
   badges?: { key: string; count: number; label: string; detail: string }[];
 }
 
