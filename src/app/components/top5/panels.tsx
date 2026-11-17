@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Category, Top5Entry } from './top5Data';
 import { formatScore } from './charts';
+import { formatWeight } from '../../services/scoresService';
 
 // The two side panels next to the ranked cards.
 
@@ -93,13 +94,13 @@ export function WhyPanel({ entry, rank, category }: { entry: Top5Entry; rank: nu
               <div className="mb-1 flex items-start justify-between gap-3">
                 <span className="min-w-0">
                   <span className="block text-sm leading-tight text-gray-100">{shortLabel(item.label)}</span>
-                  <span className="block text-xs leading-tight text-gray-400">{Math.round(item.weight)}% of score</span>
+                  <span className="block text-xs leading-tight text-gray-400">{formatWeight(item.weight)} of score</span>
                 </span>
                 <span className="text-sm font-bold tabular-nums text-white">{item.score.toFixed(1)}</span>
               </div>
               <div
                 role="meter"
-                aria-label={`${item.label}, ${Math.round(item.weight)}% of the score`}
+                aria-label={`${item.label}, ${formatWeight(item.weight)} of the score`}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={item.score}

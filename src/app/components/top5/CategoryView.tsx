@@ -46,7 +46,7 @@ export function CategoryView({ category: baseCategory, data, title }: {
         </p>
       )}
 
-      <HowCalculated id={category.id} inCompetition={Boolean(league)} />
+      <HowCalculated id={category.id} inCompetition={Boolean(league)} leagueId={league?.id} />
     </div>
   );
 }

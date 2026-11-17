@@ -17,6 +17,12 @@ export interface Ingredient {
   score: number;
 }
 
+/** A weight as shown on the site: "40%" when whole, otherwise one decimal, e.g. "12.5%". */
+export function formatWeight(weight: number): string {
+  const rounded = Math.round(weight * 10) / 10;
+  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}%`;
+}
+
 export interface ScoreEntry {
   rank: number;
   name: string;
