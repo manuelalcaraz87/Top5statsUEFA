@@ -10,7 +10,6 @@ import { fetchCurrentMatchdays, fetchHomeMatches, type NormalizedMatch } from '.
 interface Cache {
   data: NormalizedMatch[];
   timestamp: number;
-  hasLive: boolean;
 }
 
 const ALL = 'all';
@@ -24,6 +23,11 @@ const LIVE_POLL  = 45_000;
 const IDLE_POLL  = 5 * 60_000;
 const RETRY_POLL = 30_000;
 
+// "Match window": fast timings apply while a match is live, or while an
+// unfinished match kicks off between 5 minutes from now and 3 hours ago.
+const WINDOW_AHEAD_MS  = 5 * 60_000;
+const WINDOW_BEHIND_MS = 3 * 60 * 60_000;
+
 // The Render server sleeps when nobody visits and takes up to about a minute
 // to wake. While the very first request is waiting we say so, and keep trying
 // every 10 s for 2 minutes before giving up with "No current data".
@@ -33,14 +37,51 @@ const PATIENT_GIVE_UP_AFTER_MS = 120_000;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-/** The cache for a scope. */
+/** True when any match is live, or an unfinished match is inside the window around kick-off. */
+function inMatchWindow(data: NormalizedMatch[], now: number): boolean {
+  return data.some(m => {
+    if (m.status === 'live') return true;
+    if (m.status === 'finished') return false;
+    const kickoff = new Date(m.utcDate).getTime();
+    return kickoff <= now + WINDOW_AHEAD_MS && kickoff >= now - WINDOW_BEHIND_MS;
+  });
+}
+
+/** Milliseconds until the next upcoming match enters the match window, or null if none is due. */
+function msUntilWindowOpens(data: NormalizedMatch[], now: number): number | null {
+  let opensAt: number | null = null;
+  for (const m of data) {
+    if (m.status !== 'upcoming') continue;
+    const opens = new Date(m.utcDate).getTime() - WINDOW_AHEAD_MS;
+    if (opens > now && (opensAt === null || opens < opensAt)) opensAt = opens;
+  }
+  return opensAt === null ? null : opensAt - now;
+}
+
+/**
+ * The matches a scope should show right now, with the time they were saved.
+ * A league or Champions League page uses the home page's list (filtered by
+ * leagueId) when that list is newer than its own and has matches for it.
+ */
 function getCache(key: string): Cache | undefined {
-  return caches.get(key);
+  const own = caches.get(key);
+  if (key === ALL) return own;
+  const home = caches.get(ALL);
+  if (!home || (own && own.timestamp >= home.timestamp)) return own;
+  const data = home.data.filter(m => m.leagueId === key);
+  if (data.length === 0) return own;
+  return { data, timestamp: home.timestamp };
 }
 
 function nextPollDelay(key: string): number {
   if (lastFailed.get(key)) return RETRY_POLL;
-  return getCache(key)?.hasLive ? LIVE_POLL : IDLE_POLL;
+  const cache = getCache(key);
+  if (!cache) return IDLE_POLL;
+  const now = Date.now();
+  if (inMatchWindow(cache.data, now)) return LIVE_POLL;
+  // Wake up when the next kick-off enters the window, rather than waiting out a full idle poll.
+  const opensIn = msUntilWindowOpens(cache.data, now);
+  return opensIn === null ? IDLE_POLL : Math.min(IDLE_POLL, Math.max(opensIn, 1_000));
 }
 
 async function fetchScope(key: string, patient: boolean): Promise<NormalizedMatch[]> {
@@ -77,7 +118,7 @@ export function useMatches(leagueId?: string) {
     const cache = getCache(key);
     if (!cache) return;
     setAllMatches(cache.data);
-    setHasLive(cache.hasLive);
+    setHasLive(cache.data.some(m => m.status === 'live'));
     setLastUpdated(new Date(cache.timestamp));
     setLoading(false);
     setWaking(false);
@@ -87,7 +128,7 @@ export function useMatches(leagueId?: string) {
   const load = useCallback(async (force = false) => {
     const now = Date.now();
     const cache = getCache(key);
-    const ttl = cache?.hasLive ? LIVE_TTL : IDLE_TTL;
+    const ttl = cache && inMatchWindow(cache.data, now) ? LIVE_TTL : IDLE_TTL;
 
     if (!force && cache && now - cache.timestamp < ttl) {
       applyCache();
@@ -98,7 +139,7 @@ export function useMatches(leagueId?: string) {
       // Patient retries only while there is nothing on screen yet.
       const request = fetchScope(key, !cache)
         .then(data => {
-          caches.set(key, { data, timestamp: Date.now(), hasLive: data.some(m => m.status === 'live') });
+          caches.set(key, { data, timestamp: Date.now() });
           lastFailed.set(key, false);
         })
         .catch(e => {
@@ -151,10 +192,18 @@ export function useMatches(leagueId?: string) {
     }
 
     load().then(() => { if (!stopped) schedule(); });
+
+    // When the tab comes back, check for new data straight away (same timings as polling).
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') load();
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
       stopped = true;
       if (wakingTimer) clearTimeout(wakingTimer);
       if (timerRef.current) clearTimeout(timerRef.current);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [key, load, applyCache]);
 
