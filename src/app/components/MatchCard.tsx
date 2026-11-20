@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { ClubCrest } from './ClubCrest';
 import type { NormalizedMatch } from '../services/footballDataService';
 
@@ -26,15 +27,60 @@ export function formatKickoff(utcDate: string, now = new Date()): string {
   return `${day} ${time}`;
 }
 
-function StatusLine({ match }: { match: NormalizedMatch }) {
-  if (match.status === 'live') {
+/**
+ * The text after "Live": the provider's minute ("67'" or "45+2'"), or a
+ * minute worked out from the kick-off time when the provider sends none.
+ */
+export function liveMinuteLabel(match: NormalizedMatch, now = new Date()): string {
+  if (match.minute != null) {
+    return match.injuryTime != null ? `${match.minute}+${match.injuryTime}'` : `${match.minute}'`;
+  }
+  const elapsed = Math.floor((now.getTime() - new Date(match.utcDate).getTime()) / 60_000) + 1;
+  if (elapsed < 1) return "1'";
+  if (elapsed <= 45) return `${elapsed}'`;
+  if (elapsed <= 62) return "45+'";
+  const secondHalf = elapsed - 17;
+  return secondHalf <= 90 ? `${secondHalf}'` : "90+'";
+}
+
+function LiveStatus({ match }: { match: NormalizedMatch }) {
+  const phase = match.livePhase;
+  const estimated = phase === 'in_play' && match.minute == null;
+  const [now, setNow] = useState(() => new Date());
+
+  // Without a provider minute, refresh the worked-out minute every 20 seconds.
+  useEffect(() => {
+    if (!estimated) return;
+    setNow(new Date());
+    const timer = setInterval(() => setNow(new Date()), 20_000);
+    return () => clearInterval(timer);
+  }, [estimated]);
+
+  if (phase === 'half_time') {
     return (
-      <span className="flex items-center gap-1 text-[11px] font-semibold text-red-400">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-        {match.minute != null ? `Live ${match.minute}'` : 'Live'}
+      <span className="flex items-center gap-1 text-[11px] font-semibold text-red-300">
+        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+        Half time
       </span>
     );
   }
+  const text =
+    phase === 'extra_time' ? 'Extra time'
+    : phase === 'penalties' ? 'Penalties'
+    : `Live ${liveMinuteLabel(match, now)}`;
+  return (
+    <span
+      className="flex items-center gap-1 text-[11px] font-semibold text-red-400"
+      title={estimated ? 'Minute worked out from the kick-off time' : undefined}
+    >
+      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
+      {text}
+    </span>
+  );
+}
+
+function StatusLine({ match }: { match: NormalizedMatch }) {
+  if (match.status === 'live') return <LiveStatus match={match} />;
   if (match.status === 'finished') {
     return <span className="text-[11px] font-semibold text-gray-300">Full time</span>;
   }

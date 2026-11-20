@@ -153,6 +153,17 @@ export function normalizeTeamName(raw: string, shortName?: string): string {
 
 // ── Types ───────────────────────────────────────────────────────────
 
+/** Which part of a live match is being played. */
+export type LivePhase = 'in_play' | 'half_time' | 'extra_time' | 'penalties';
+
+const LIVE_PHASES: Record<string, LivePhase> = {
+  LIVE: 'in_play',
+  IN_PLAY: 'in_play',
+  PAUSED: 'half_time',
+  EXTRA_TIME: 'extra_time',
+  PENALTY_SHOOTOUT: 'penalties',
+};
+
 export interface NormalizedMatch {
   id: number;
   homeTeam: string;
@@ -161,6 +172,10 @@ export interface NormalizedMatch {
   awayScore: number | null;
   status: 'live' | 'finished' | 'upcoming';
   minute: number | null;
+  /** Added minutes, e.g. 2 for "45+2'". Null unless the provider sends it. */
+  injuryTime: number | null;
+  /** Part of the match being played; null when the match is not live. */
+  livePhase: LivePhase | null;
   time: string | undefined;
   leagueCode: string;
   leagueName: string;
@@ -244,8 +259,9 @@ function parseForm(form: string | null | undefined): ('W' | 'D' | 'L')[] {
 
 function normalizeMatch(m: Record<string, unknown>): NormalizedMatch {
   const statusRaw = m.status as string;
+  const livePhase: LivePhase | null = LIVE_PHASES[statusRaw] ?? null;
   const status: NormalizedMatch['status'] =
-    statusRaw === 'IN_PLAY' || statusRaw === 'PAUSED' ? 'live'
+    livePhase ? 'live'
     : statusRaw === 'FINISHED' || statusRaw === 'AWARDED' ? 'finished'
     : 'upcoming';
 
@@ -266,7 +282,9 @@ function normalizeMatch(m: Record<string, unknown>): NormalizedMatch {
     homeScore,
     awayScore,
     status,
-    minute: (m.minute as number | null) ?? null,
+    minute: typeof m.minute === 'number' ? m.minute : null,
+    injuryTime: typeof m.injuryTime === 'number' ? m.injuryTime : null,
+    livePhase,
     time: status === 'upcoming' ? formatKickoff(m.utcDate as string) : undefined,
     leagueCode: code,
     leagueName: leagueInfo.name,
