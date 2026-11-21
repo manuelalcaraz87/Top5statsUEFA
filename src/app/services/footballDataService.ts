@@ -5,7 +5,7 @@
 // The proxy server routes requests to the real API with proper authentication.
 import { CURRENT_SEASON } from './season';
 
-const API_BASE = import.meta.env.VITE_API_PROXY_URL ||
+export const API_BASE = import.meta.env.VITE_API_PROXY_URL ||
   (import.meta.env.DEV ? 'http://localhost:3001' : '');
 
 // ── League mapping ─────────────────────────────────────────────────────────
@@ -153,8 +153,14 @@ export function normalizeTeamName(raw: string, shortName?: string): string {
 
 // ── Types ───────────────────────────────────────────────────────────
 
-/** Which part of a live match is being played. */
-export type LivePhase = 'in_play' | 'half_time' | 'extra_time' | 'penalties';
+/**
+ * Which part of a match is being played, or why it is not being played.
+ * football-data.org only ever gives the first four; API-Football's live list
+ * can also give the rest.
+ */
+export type LivePhase =
+  | 'in_play' | 'half_time' | 'extra_time' | 'extra_time_break' | 'penalties'
+  | 'finished' | 'suspended' | 'postponed' | 'cancelled';
 
 const LIVE_PHASES: Record<string, LivePhase> = {
   LIVE: 'in_play',
@@ -174,8 +180,10 @@ export interface NormalizedMatch {
   minute: number | null;
   /** Added minutes, e.g. 2 for "45+2'". Null unless the provider sends it. */
   injuryTime: number | null;
-  /** Part of the match being played; null when the match is not live. */
+  /** Part of the match being played; null when football-data.org gives none and there is no live entry. */
   livePhase: LivePhase | null;
+  /** Where the live minute comes from: the provider, a worked-out guess from kick-off, or null (no minute shown). */
+  minuteSource: 'provider' | 'estimate' | null;
   time: string | undefined;
   leagueCode: string;
   leagueName: string;
@@ -285,6 +293,7 @@ function normalizeMatch(m: Record<string, unknown>): NormalizedMatch {
     minute: typeof m.minute === 'number' ? m.minute : null,
     injuryTime: typeof m.injuryTime === 'number' ? m.injuryTime : null,
     livePhase,
+    minuteSource: livePhase === 'in_play' ? (typeof m.minute === 'number' ? 'provider' : 'estimate') : null,
     time: status === 'upcoming' ? formatKickoff(m.utcDate as string) : undefined,
     leagueCode: code,
     leagueName: leagueInfo.name,
