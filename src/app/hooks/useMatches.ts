@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { fetchCurrentMatchdays, fetchHomeMatches, type NormalizedMatch } from '../services/footballDataService';
+import { fetchCurrentMatchdays, fetchHomeMatches, LEAGUE_CODES, type NormalizedMatch } from '../services/footballDataService';
+import { fetchLiveMatches, pairLiveEntries, type LiveEntry } from '../services/liveMatchService';
 
 // Matches for the strip. The home page asks for every competition ("all") in
 // one request and never asks for standings; a league or Champions League page
@@ -36,6 +37,68 @@ const PATIENT_RETRY_EVERY_MS  = 10_000;
 const PATIENT_GIVE_UP_AFTER_MS = 120_000;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// ── Live list from API-Football (one shared copy for every page) ─────────────
+
+let liveCache: { entries: LiveEntry[] | null; timestamp: number } | null = null; // null entries = no live data
+let liveInflight: Promise<void> | null = null;
+const warnedUnpaired = new Set<string>();
+
+/** Fetches /api/live unless the shared copy is under 40 seconds old. Never throws. */
+async function refreshLive(): Promise<void> {
+  if (liveCache && Date.now() - liveCache.timestamp < LIVE_TTL) return;
+  if (!liveInflight) {
+    liveInflight = fetchLiveMatches()
+      .then(entries => { liveCache = { entries, timestamp: Date.now() }; })
+      .finally(() => { liveInflight = null; });
+  }
+  await liveInflight;
+}
+
+/**
+ * The cards with API-Football's status, minute and score put on the ones that
+ * pair with a live entry. Outside a match window the live list is not used.
+ * Cards with no live entry are returned exactly as they are.
+ */
+function withLive(key: string, cards: NormalizedMatch[]): NormalizedMatch[] {
+  const entries = liveCache?.entries;
+  if (!entries || entries.length === 0 || !inMatchWindow(cards, Date.now())) return cards;
+
+  const code = key === ALL ? null : LEAGUE_CODES[key];
+  const ours = code ? entries.filter(e => e.competition === code) : entries;
+  const overlay = new Map<number, LiveEntry>();
+  for (const { live, card } of pairLiveEntries(cards, ours)) {
+    if (card) {
+      overlay.set(card.id, live);
+    } else {
+      const label = `${live.competition} ${live.kickoff} ${live.home} v ${live.away}`;
+      if (!warnedUnpaired.has(label)) {
+        warnedUnpaired.add(label);
+        console.warn(`[useMatches] live match has no card, ignored: ${label}`);
+      }
+    }
+  }
+  if (overlay.size === 0) return cards;
+
+  return cards.map(card => {
+    const live = overlay.get(card.id);
+    if (!live) return card;
+    const status: NormalizedMatch['status'] =
+      live.phase === 'finished' ? 'finished'
+      : live.phase === 'suspended' || live.phase === 'postponed' || live.phase === 'cancelled' ? 'upcoming'
+      : 'live';
+    return {
+      ...card,
+      status,
+      livePhase: live.phase,
+      minute: live.minute,
+      injuryTime: live.extraMinute,
+      minuteSource: live.phase === 'in_play' ? (live.minute != null ? 'provider' : 'estimate') : null,
+      homeScore: live.homeGoals ?? card.homeScore,
+      awayScore: live.awayGoals ?? card.awayScore,
+    };
+  });
+}
 
 /** True when any match is live, or an unfinished match is inside the window around kick-off. */
 function inMatchWindow(data: NormalizedMatch[], now: number): boolean {
@@ -117,8 +180,9 @@ export function useMatches(leagueId?: string) {
   const applyCache = useCallback(() => {
     const cache = getCache(key);
     if (!cache) return;
-    setAllMatches(cache.data);
-    setHasLive(cache.data.some(m => m.status === 'live'));
+    const cards = withLive(key, cache.data);
+    setAllMatches(cards);
+    setHasLive(cards.some(m => m.status === 'live'));
     setLastUpdated(new Date(cache.timestamp));
     setLoading(false);
     setWaking(false);
@@ -130,8 +194,19 @@ export function useMatches(leagueId?: string) {
     const cache = getCache(key);
     const ttl = cache && inMatchWindow(cache.data, now) ? LIVE_TTL : IDLE_TTL;
 
+    // Inside a match window only: bring in the shared live list (at most one
+    // call per 40 s for all pages) and redraw if it changed.
+    const addLive = async () => {
+      const current = getCache(key);
+      if (!current || !inMatchWindow(current.data, Date.now())) return;
+      const before = liveCache;
+      await refreshLive();
+      if (liveCache !== before && activeKey.current === key) applyCache();
+    };
+
     if (!force && cache && now - cache.timestamp < ttl) {
       applyCache();
+      await addLive();
       return;
     }
 
@@ -156,6 +231,7 @@ export function useMatches(leagueId?: string) {
 
     if (getCache(key)) {
       applyCache();
+      await addLive();
     } else {
       setError('Could not load match data');
       setLoading(false);

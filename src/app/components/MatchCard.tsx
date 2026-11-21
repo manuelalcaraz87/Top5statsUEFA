@@ -45,7 +45,7 @@ export function liveMinuteLabel(match: NormalizedMatch, now = new Date()): strin
 
 function LiveStatus({ match }: { match: NormalizedMatch }) {
   const phase = match.livePhase;
-  const estimated = phase === 'in_play' && match.minute == null;
+  const estimated = phase === 'in_play' && match.minuteSource === 'estimate';
   const [now, setNow] = useState(() => new Date());
 
   // Without a provider minute, refresh the worked-out minute every 20 seconds.
@@ -65,7 +65,8 @@ function LiveStatus({ match }: { match: NormalizedMatch }) {
     );
   }
   const text =
-    phase === 'extra_time' ? 'Extra time'
+    phase === 'extra_time' ? (match.minute != null ? `Extra time ${liveMinuteLabel(match, now)}` : 'Extra time')
+    : phase === 'extra_time_break' ? 'Extra time break'
     : phase === 'penalties' ? 'Penalties'
     : `Live ${liveMinuteLabel(match, now)}`;
   return (
@@ -83,6 +84,18 @@ function StatusLine({ match }: { match: NormalizedMatch }) {
   if (match.status === 'live') return <LiveStatus match={match} />;
   if (match.status === 'finished') {
     return <span className="text-[11px] font-semibold text-gray-300">Full time</span>;
+  }
+  const stopped =
+    match.livePhase === 'suspended' ? 'Suspended'
+    : match.livePhase === 'postponed' ? 'Postponed'
+    : match.livePhase === 'cancelled' ? 'Cancelled'
+    : null;
+  if (stopped) return <span className="text-[11px] font-semibold text-gray-300">{stopped}</span>;
+
+  // Kick-off was more than 2 minutes ago but no source has said anything yet.
+  const kickedOff = new Date(match.utcDate).getTime() < Date.now() - 2 * 60_000;
+  if (kickedOff) {
+    return <span className="block truncate text-[11px] text-gray-400">Kick-off {formatKickoff(match.utcDate)}, waiting for update</span>;
   }
   return <span className="text-[11px] text-gray-400">{formatKickoff(match.utcDate)}</span>;
 }

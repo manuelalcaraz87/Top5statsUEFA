@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { handleLive } from './live.js';
 
 dotenv.config();
 
@@ -199,6 +200,9 @@ app.get('/api/fd/*', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch from Football Data API' });
   }
 });
+
+// Live matches from API-Football (see server/live.js)
+app.get('/api/live', handleLive);
 
 // Health check
 app.get('/health', (req, res) => {
