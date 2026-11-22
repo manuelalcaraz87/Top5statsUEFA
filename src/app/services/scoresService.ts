@@ -44,6 +44,8 @@ export interface ScoreEntry {
 
 export interface ScoresFile {
   generatedAt: string;
+  /** UTC ISO time of the kick-off of the latest match included. Missing in older copies of the file. */
+  matchesThrough?: string;
   season: string;
   categories: Record<ScoreCategory, Partial<Record<ScoreList, ScoreEntry[]>>>;
 }
@@ -110,6 +112,14 @@ export function loadScores(): Promise<ScoresFile> {
 /** The file if it has already been loaded, otherwise null. */
 export function getLoadedScores(): ScoresFile | null {
   return loaded;
+}
+
+/** Kick-off of the latest match included in the scores, or null when the file doesn't say. */
+export function getMatchesThrough(): Date | null {
+  const raw = loaded?.matchesThrough;
+  if (!raw) return null;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 export function useScores(): { scores: ScoresFile | null; loading: boolean } {

@@ -3,7 +3,7 @@ import { ClubCrest } from '../ClubCrest';
 import { LeagueBadge } from '../LeagueBadge';
 import { OpponentsMeter, ScoreChip } from './charts';
 import { StreakBadge } from './StreakBadge';
-import { FILE_CATEGORY, formatWeight, listForLeague, useScores } from '../../services/scoresService';
+import { FILE_CATEGORY, formatWeight, getMatchesThrough, listForLeague, useScores } from '../../services/scoresService';
 import type { Ingredient, ScoresFile } from '../../services/scoresService';
 import type { Category, CategoryData, CategoryId, StatValue } from './top5Data';
 
@@ -15,12 +15,24 @@ export function formatStat(value: StatValue): string {
   return value === null || value === '' ? DASH : String(value);
 }
 
-/** When the scores file was generated, in the visitor's local time. */
+/** Which matches the scores include and when they were last checked, in the visitor's local time. */
 export function LastUpdated({ time }: { time: Date | null }) {
+  const through = getMatchesThrough();
+  const checked = time ? time.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : DASH;
+  if (!through) {
+    return (
+      <p className="text-xs text-gray-300">
+        Last updated{' '}
+        {checked}
+      </p>
+    );
+  }
   return (
     <p className="text-xs text-gray-300">
-      Last updated{' '}
-      {time ? time.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : DASH}
+      <span className="block">
+        Includes matches up to {through.toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+      </span>
+      <span className="block">Updated hourly after matches · last check {checked}</span>
     </p>
   );
 }
