@@ -26,6 +26,7 @@ const MATCH_TTL_LIVE_MS = MINUTE_MS;           // live, or not yet finished
 const MATCH_TTL_FINISHED_RECENT_MS = 10 * MINUTE_MS; // first 3 hours after finish
 const MATCH_TTL_FINISHED_LATER_MS = 24 * HOUR_MS;
 const FINISHED_RECENT_MS = 3 * HOUR_MS;
+const FAILURE_MEMORY_MS = MINUTE_MS;           // after a failed upstream call, leave it alone this long
 
 const COMPETITION_CODES = new Set(LEAGUES.values());
 
@@ -33,11 +34,25 @@ const inFlight = new Map();     // key -> Promise, so identical lookups share on
 const fixturesCache = new Map(); // "CODE|date" -> { answer, at }
 const matchCache = new Map();    // fixture id -> { answer, at }
 const finishedSince = new Map(); // fixture id -> time we first saw it finished
+const failedUntil = new Map();   // "fixtures:CODE|date" or "match:id" -> time before which we do not retry upstream
 
 // Runs load() once for a key at a time; callers asking meanwhile share its answer.
 function shared(key, load) {
   if (!inFlight.has(key)) inFlight.set(key, load().finally(() => inFlight.delete(key)));
   return inFlight.get(key);
+}
+
+function recentlyFailed(key) {
+  const until = failedUntil.get(key);
+  if (until === undefined) return false;
+  if (Date.now() < until) return true;
+  failedUntil.delete(key);
+  return false;
+}
+
+// The answer to send while upstream is off: the last good one (however old), else "not available".
+function fallbackAnswer(cached) {
+  return cached ? cached.answer : { available: false };
 }
 
 function todayUtc() {
@@ -92,6 +107,7 @@ export async function handleFixturesOn(req, res) {
   const ttl = date < todayUtc() ? FIXTURES_TTL_PAST_MS : FIXTURES_TTL_TODAY_MS;
   const cached = fixturesCache.get(key);
   if (cached && Date.now() - cached.at < ttl) return res.json(cached.answer);
+  if (recentlyFailed(`fixtures:${key}`)) return res.json(fallbackAnswer(cached));
 
   const answer = await shared(`fixtures:${key}`, async () => {
     try {
@@ -101,8 +117,9 @@ export async function handleFixturesOn(req, res) {
       return answer;
     } catch (error) {
       const reason = error instanceof Unavailable ? error.message : `unexpected error: ${error.message}`;
-      console.warn(`[match] fixtures for ${key} switched off for this answer: ${reason}`);
-      return { available: false };
+      console.warn(`[match] fixtures for ${key} switched off for ${FAILURE_MEMORY_MS / 1000}s: ${reason}`);
+      failedUntil.set(`fixtures:${key}`, Date.now() + FAILURE_MEMORY_MS);
+      return fallbackAnswer(fixturesCache.get(key));
     }
   });
   res.json(answer);
@@ -211,6 +228,7 @@ export async function handleMatch(req, res) {
 
   const cached = matchCache.get(id);
   if (cached && Date.now() - cached.at < matchTtl(id, cached.answer)) return res.json(cached.answer);
+  if (recentlyFailed(`match:${id}`)) return res.json(fallbackAnswer(cached));
 
   const answer = await shared(`match:${id}`, async () => {
     try {
@@ -220,8 +238,9 @@ export async function handleMatch(req, res) {
       return answer;
     } catch (error) {
       const reason = error instanceof Unavailable ? error.message : `unexpected error: ${error.message}`;
-      console.warn(`[match] match ${id} switched off for this answer: ${reason}`);
-      return { available: false };
+      console.warn(`[match] match ${id} switched off for ${FAILURE_MEMORY_MS / 1000}s: ${reason}`);
+      failedUntil.set(`match:${id}`, Date.now() + FAILURE_MEMORY_MS);
+      return fallbackAnswer(matchCache.get(id));
     }
   });
   res.json(answer);
