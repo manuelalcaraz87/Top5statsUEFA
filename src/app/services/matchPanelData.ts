@@ -3,8 +3,8 @@
 // makes a network request.
 import type { NormalizedMatch } from './footballDataService';
 import {
-  findByClubName, getLoadedScores, listForLeague, sameClubName, scoreList,
-  type ClubLeader, type ScoreList, type ScoresFile,
+  findByClubName, getLoadedScores, listForLeague, matchesThroughOf, sameClubName, scoreList,
+  type ClubLeader, type ScoreChange, type ScoreList, type ScoresFile,
 } from './scoresService';
 
 export type PlayerCategory = 'striker' | 'creator' | 'defender' | 'goalkeeper';
@@ -18,6 +18,14 @@ export const FIRST_STAT_KEYS: Record<PlayerCategory, [string, string, string]> =
   creator:    ['assists', 'keyPasses', 'passAccuracyPct'],
   defender:   ['tackles', 'interceptions', 'duelsWonPct'],
   goalkeeper: ['saves', 'savePct', 'cleanSheets'],
+};
+
+/** All five stat keys of each category, in the order of the category tabs' stat labels. */
+export const ALL_STAT_KEYS: Record<PlayerCategory, string[]> = {
+  striker:    ['goals', 'minutesPerGoal', 'shotsOnTarget', 'assists', 'minutesPlayed'],
+  creator:    ['assists', 'keyPasses', 'passAccuracyPct', 'successfulDribbles', 'minutesPlayed'],
+  defender:   ['tackles', 'interceptions', 'duelsWonPct', 'blocks', 'teamCleanSheets'],
+  goalkeeper: ['saves', 'savePct', 'cleanSheets', 'goalsConcededPerMatch', 'penaltiesSaved'],
 };
 
 /** What the visitor reads for each view, e.g. "12th in La Liga" and "Ranked in the La Liga top 20". */
@@ -39,6 +47,20 @@ export interface PanelPlayer {
   rank: number;
   /** The first three stats, raw from the file (null when missing). */
   stats: (string | number | null)[];
+  /**
+   * What the panel's own match changed for him: only set when the match is
+   * finished, the scores include it and his change belongs to it. Otherwise null.
+   */
+  change: PanelChange | null;
+}
+
+export interface PanelChange {
+  played: boolean | undefined;
+  matchStats: Record<string, number | null> | null | undefined;
+  /** undefined: the file doesn't say; null: not ranked before. */
+  rankBefore: number | null | undefined;
+  scoreBefore: number | null | undefined;
+  previousLeader: string | null;
 }
 
 export type ClubLeadersOnCard = Record<PlayerCategory, PanelPlayer | null>;
@@ -73,7 +95,35 @@ export function viewForMatch(match: Pick<NormalizedMatch, 'leagueId'>): ScoreLis
   return listForLeague(match.leagueId);
 }
 
-function toPlayer(category: PlayerCategory, club: string, leader: ClubLeader): PanelPlayer {
+/** A change counts as this match's when the kick-offs are within 10 minutes of each other. */
+const SAME_MATCH_MS = 10 * 60_000;
+
+type PanelMatch = Pick<NormalizedMatch, 'leagueId' | 'homeTeam' | 'awayTeam' | 'status' | 'utcDate'>;
+
+function changeForMatch(
+  leader: ClubLeader, change: ScoreChange | null | undefined, match: PanelMatch, club: string, through: Date | null,
+): PanelChange | null {
+  if (!change?.matchKickoff || match.status !== 'finished' || !through) return null;
+  const kickoff = new Date(match.utcDate).getTime();
+  const changeKickoff = new Date(change.matchKickoff).getTime();
+  if (Number.isNaN(kickoff) || Number.isNaN(changeKickoff)) return null;
+  if (through.getTime() < kickoff) return null; // the scores don't include this match yet
+  if (Math.abs(changeKickoff - kickoff) > SAME_MATCH_MS) return null;
+  // The opponent in the file must be the other club of this match (when the file names one).
+  const other = sameClubName(club, match.homeTeam) ? match.awayTeam : match.homeTeam;
+  if (change.opponent && !sameClubName(change.opponent, other)) return null;
+  return {
+    played: change.played,
+    matchStats: change.matchStats,
+    rankBefore: change.rankBefore,
+    scoreBefore: change.scoreBefore,
+    previousLeader: leader.previousLeader ?? null,
+  };
+}
+
+function toPlayer(
+  category: PlayerCategory, club: string, leader: ClubLeader, match: PanelMatch, through: Date | null,
+): PanelPlayer {
   return {
     category,
     name: leader.name,
@@ -81,6 +131,7 @@ function toPlayer(category: PlayerCategory, club: string, leader: ClubLeader): P
     score: leader.score,
     rank: leader.rank,
     stats: FIRST_STAT_KEYS[category].map(key => leader.stats?.[key] ?? null),
+    change: changeForMatch(leader, leader.change, match, club, through),
   };
 }
 
@@ -89,19 +140,19 @@ function rankedFor(scores: ScoresFile | null, view: ScoreList, category: PlayerC
   return scoreList(scores, category, view).filter(e => sameClubName(e.club, club));
 }
 
-function leadersFor(scores: ScoresFile, view: ScoreList, club: string): ClubLeadersOnCard {
+function leadersFor(scores: ScoresFile, view: ScoreList, club: string, match: PanelMatch, through: Date | null): ClubLeadersOnCard {
   const fromFile = scores.clubLeaders ? findByClubName(scores.clubLeaders[view], club) : undefined;
   const result = {} as ClubLeadersOnCard;
   for (const category of PLAYER_CATEGORIES) {
     if (fromFile) {
       // The file names this club's leader (or says it has none: null).
       const leader = fromFile[category];
-      result[category] = leader ? toPlayer(category, club, leader) : null;
+      result[category] = leader ? toPlayer(category, club, leader, match, through) : null;
     } else {
       // No clubLeaders in the file (or none for this club): the best-ranked
       // player of the club in the view's published list, if there is one.
       const best = rankedFor(scores, view, category, club).sort((a, b) => a.rank - b.rank)[0];
-      result[category] = best ? toPlayer(category, club, best) : null;
+      result[category] = best ? toPlayer(category, club, best, match, through) : null;
     }
   }
   return result;
@@ -118,8 +169,9 @@ function rankedPlayers(scores: ScoresFile, view: ScoreList, club: string): Ranke
 const NO_LEADERS: ClubLeadersOnCard = { striker: null, creator: null, defender: null, goalkeeper: null };
 
 /** Everything the panel shows for a match, from the already-loaded scores file. */
-export function buildMatchPanelData(match: Pick<NormalizedMatch, 'leagueId' | 'homeTeam' | 'awayTeam'>): MatchPanelData {
+export function buildMatchPanelData(match: PanelMatch): MatchPanelData {
   const scores = getLoadedScores();
+  const through = matchesThroughOf(scores);
   const view = viewForMatch(match);
   const viewName = VIEW_NAMES[view] ?? null;
   if (!scores || !viewName) {
@@ -127,8 +179,8 @@ export function buildMatchPanelData(match: Pick<NormalizedMatch, 'leagueId' | 'h
   }
   return {
     viewName,
-    home: leadersFor(scores, view, match.homeTeam),
-    away: leadersFor(scores, view, match.awayTeam),
+    home: leadersFor(scores, view, match.homeTeam, match, through),
+    away: leadersFor(scores, view, match.awayTeam, match, through),
     homeRanked: rankedPlayers(scores, view, match.homeTeam),
     awayRanked: rankedPlayers(scores, view, match.awayTeam),
   };

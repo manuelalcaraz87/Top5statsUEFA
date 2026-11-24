@@ -3,9 +3,11 @@ import { ClubCrest } from '../ClubCrest';
 import { LeagueBadge } from '../LeagueBadge';
 import { OpponentsMeter, ScoreChip } from './charts';
 import { StreakBadge } from './StreakBadge';
-import { FILE_CATEGORY, formatWeight, listForLeague, matchesThroughOf, useScores } from '../../services/scoresService';
+import {
+  FILE_CATEGORY, findFileEntry, formatWeight, listForLeague, listFromEntryKey, matchesThroughOf, rankMove, useScores,
+} from '../../services/scoresService';
 import type { Ingredient, ScoresFile } from '../../services/scoresService';
-import type { Category, CategoryData, CategoryId, StatValue } from './top5Data';
+import type { Category, CategoryData, CategoryId, StatValue, Top5Entry } from './top5Data';
 
 // Building blocks shared by the Top 5 tabs.
 
@@ -210,6 +212,40 @@ export function HowCalculated({ id, inCompetition, leagueId }: { id: CategoryId;
 }
 
 /** The league / competition table (Clubs tab on a league page): a compact table with a small score chip. */
+/**
+ * A small marker beside a rank: "▲7" (moved up 7 places), "▼2" or "New", with
+ * the explanation on hover and keyboard focus and as the screen-reader label.
+ * It sits under the rank without taking any width, and uses the site's plain
+ * grey text. Nothing is shown when there is no change information, when the
+ * rank did not move, or when the number shown is not the file's own rank.
+ */
+export function RankMarker({ entry, category, rank }: { entry: Top5Entry; category: Category; rank: number }) {
+  const { scores } = useScores();
+  const list = listFromEntryKey(entry.key);
+  if (!scores || !list) return null;
+  const fileEntry = findFileEntry(scores, FILE_CATEGORY[category.id], list, entry.name, entry.club);
+  if (!fileEntry || fileEntry.rank !== rank) return null;
+  const move = rankMove(fileEntry, entry.club);
+  if (!move) return null;
+  const text = move.places === null ? 'New' : move.places > 0 ? `▲${move.places}` : `▼${Math.abs(move.places)}`;
+  return (
+    <span
+      role="img"
+      tabIndex={0}
+      aria-label={move.sentence}
+      className="group absolute left-1/2 top-full z-10 -translate-x-1/2 whitespace-nowrap rounded text-[10px] font-semibold leading-3 text-gray-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-white/60"
+    >
+      <span aria-hidden="true">{text}</span>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-full left-0 mb-1 hidden w-max max-w-[14rem] whitespace-normal rounded border border-[#2a2c33] bg-[#0f1115] px-2 py-1 text-left text-xs font-normal leading-tight text-gray-200 group-hover:block group-focus:block"
+      >
+        {move.sentence}
+      </span>
+    </span>
+  );
+}
+
 export function CategoryTable({ category, data }: { category: Category; data: CategoryData }) {
   const { entries, tableAsOf, checkingLive } = data;
   return (
@@ -231,11 +267,14 @@ export function CategoryTable({ category, data }: { category: Category; data: Ca
             {entries.map((entry, index) => (
               <tr key={entry.key} className="border-b border-gray-800 transition-colors hover:bg-white/5">
                 <td className="px-2 py-3">
-                  <span
-                    className="text-display inline-block min-w-[1.75rem] rounded-md px-1.5 text-center text-base text-gray-400"
-                    style={index === 0 ? { outline: '1px solid #f4c95d' } : undefined}
-                  >
-                    {index + 1}
+                  <span className="relative inline-block">
+                    <span
+                      className="text-display inline-block min-w-[1.75rem] rounded-md px-1.5 text-center text-base text-gray-400"
+                      style={index === 0 ? { outline: '1px solid #f4c95d' } : undefined}
+                    >
+                      {index + 1}
+                    </span>
+                    <RankMarker entry={entry} category={category} rank={index + 1} />
                   </span>
                 </td>
                 <td className="py-3">
