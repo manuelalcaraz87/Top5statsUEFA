@@ -10,6 +10,8 @@ interface MatchCardProps {
   /** Club strength (0-100) for each side; undefined when there's no data. */
   homeStrength?: number;
   awayStrength?: number;
+  /** Called when the card is pressed (click, Enter or Space) with the card's own button, so focus can return to it. */
+  onOpen?: (match: NormalizedMatch) => void;
 }
 
 function sameLocalDay(a: Date, b: Date): boolean {
@@ -80,7 +82,7 @@ function LiveStatus({ match }: { match: NormalizedMatch }) {
   );
 }
 
-function StatusLine({ match }: { match: NormalizedMatch }) {
+export function StatusLine({ match }: { match: NormalizedMatch }) {
   if (match.status === 'live') return <LiveStatus match={match} />;
   if (match.status === 'finished') {
     return <span className="text-[11px] font-semibold text-gray-300">Full time</span>;
@@ -102,15 +104,15 @@ function StatusLine({ match }: { match: NormalizedMatch }) {
 
 function StrengthBar({ value }: { value?: number }) {
   if (value === undefined) {
-    return <p className="mt-1 text-[9px] leading-none text-[#94a3b8]">No current data</p>;
+    return <span className="mt-1 block text-[9px] leading-none text-[#94a3b8]">No current data</span>;
   }
   return (
-    <div className="mt-1 flex items-center gap-1.5" title={`Strength ${value} of 100`}>
-      <div className="h-1 flex-1 overflow-hidden rounded-full bg-[#2a2a2a]">
-        <div className="h-full rounded-full bg-slate-400" style={{ width: `${value}%` }} />
-      </div>
+    <span className="mt-1 flex items-center gap-1.5" title={`Strength ${value} of 100`}>
+      <span className="block h-1 flex-1 overflow-hidden rounded-full bg-[#2a2a2a]">
+        <span className="block h-full rounded-full bg-slate-400" style={{ width: `${value}%` }} />
+      </span>
       <span className="w-6 text-right text-[10px] tabular-nums leading-none text-gray-400">{value}</span>
-    </div>
+    </span>
   );
 }
 
@@ -121,32 +123,38 @@ function TeamRow({ name, score, strength, highlight }: {
   highlight: boolean;
 }) {
   return (
-    <div>
-      <div className="flex items-center justify-between gap-1">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+    <span className="block">
+      <span className="flex items-center justify-between gap-1">
+        <span className="flex min-w-0 flex-1 items-center gap-1.5">
           <ClubCrest club={name} size={22} />
           <span className="truncate text-xs leading-tight text-gray-200">{name}</span>
-        </div>
+        </span>
         <span className={`ml-1 flex-shrink-0 text-base font-bold tabular-nums ${highlight ? 'text-white' : 'text-gray-300'}`}>
           {score ?? '-'}
         </span>
-      </div>
+      </span>
       <StrengthBar value={strength} />
-    </div>
+    </span>
   );
 }
 
-export function MatchCard({ match, homeStrength, awayStrength }: MatchCardProps) {
+export function MatchCard({ match, homeStrength, awayStrength, onOpen }: MatchCardProps) {
   const isLive = match.status === 'live';
   return (
-    <div className="h-full w-full rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-2.5 pb-2.5 pt-2 transition-colors hover:border-[#3a3a3a]">
-      <div className="mb-1.5 h-4">
+    <button
+      type="button"
+      data-match-card={match.id}
+      onClick={() => onOpen?.(match)}
+      aria-haspopup="dialog"
+      className="block h-full w-full cursor-pointer rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-2.5 pb-2.5 pt-2 text-left transition-colors hover:border-[#3a3a3a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-400"
+    >
+      <span className="mb-1.5 block h-4">
         <StatusLine match={match} />
-      </div>
-      <div className="space-y-2">
+      </span>
+      <span className="block space-y-2">
         <TeamRow name={match.homeTeam} score={match.homeScore} strength={homeStrength} highlight={isLive} />
         <TeamRow name={match.awayTeam} score={match.awayScore} strength={awayStrength} highlight={isLive} />
-      </div>
-    </div>
+      </span>
+    </button>
   );
 }
