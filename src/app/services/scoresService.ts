@@ -1,7 +1,7 @@
-// Top5 Scores: loads the site's own scores file (/data/scores.json) once per
-// visit and keeps it in memory. This is the only place that knows the file's
+// Top5 Scores: loads the site's own scores file (/data/scores.json), keeps it in
+// memory and, while the page is open, picks up a newer file by itself. This is the only place that knows the file's
 // shape, how site ids map to the file's keys, and how club names are matched.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { normalizeTeamName } from './footballDataService';
 
 // ── The file's shape ─────────────────────────────────────────────────────────
@@ -102,31 +102,93 @@ export function chipForCompetition(competition: string): string {
   return competition;
 }
 
-// ── Loading (once per visit) ─────────────────────────────────────────────────
+// ── Loading, and picking up new files while the page stays open ─────────────
 
 const SCORES_URL = import.meta.env.DEV
   ? 'https://top5stats.com/data/scores.json'
   : '/data/scores.json';
 
+const CHECK_EVERY_MS = 10 * 60_000;      // normal: look for a new file at most this often
+const FAST_CHECK_EVERY_MS = 5 * 60_000;  // while a finished match is waiting to be included
+const TICK_MS = 30_000;                  // how often the timer asks "is a check due?"
+
 let loaded: ScoresFile | null = null;
 let inFlight: Promise<ScoresFile> | null = null;
+let lastCheckAt = 0;
+let refreshing = false;
+let fastRequests = 0;
+let subscribers = 0;
+let timer: ReturnType<typeof setInterval> | null = null;
+const listeners = new Set<() => void>();
+
+function isScoresFile(file: unknown): file is ScoresFile {
+  return !!file && typeof file === 'object' && !!(file as ScoresFile).categories;
+}
 
 export function loadScores(): Promise<ScoresFile> {
   if (loaded) return Promise.resolve(loaded);
   if (!inFlight) {
+    lastCheckAt = Date.now();
     inFlight = fetch(SCORES_URL)
       .then(res => {
         if (!res.ok) throw new Error(`scores.json: ${res.status} ${res.statusText}`);
         return res.json() as Promise<ScoresFile>;
       })
       .then(file => {
-        if (!file || typeof file !== 'object' || !file.categories) throw new Error('scores.json: unexpected shape');
+        if (!isScoresFile(file)) throw new Error('scores.json: unexpected shape');
         loaded = file;
+        listeners.forEach(l => l());
         return file;
       })
       .finally(() => { inFlight = null; }); // a failure is not remembered: the next visit to a page retries
   }
   return inFlight;
+}
+
+/** Asks the server for the file again, skipping the browser's saved copy. A failure keeps the current file. */
+async function recheckScores(): Promise<void> {
+  if (!loaded || refreshing) return;
+  refreshing = true;
+  lastCheckAt = Date.now();
+  try {
+    const res = await fetch(SCORES_URL, { cache: 'no-store' });
+    if (!res.ok) return;
+    const file: unknown = await res.json();
+    if (!isScoresFile(file) || file.generatedAt === loaded?.generatedAt) return;
+    loaded = file;
+    listeners.forEach(l => l());
+  } catch {
+    // Silent: the file already on the page stays.
+  } finally {
+    refreshing = false;
+  }
+}
+
+function checkIfDue() {
+  if (!loaded || document.hidden) return;
+  const every = fastRequests > 0 ? FAST_CHECK_EVERY_MS : CHECK_EVERY_MS;
+  if (Date.now() - lastCheckAt >= every) void recheckScores();
+}
+
+function startChecking() {
+  timer = setInterval(checkIfDue, TICK_MS);
+  document.addEventListener('visibilitychange', checkIfDue);
+}
+
+function stopChecking() {
+  if (timer) clearInterval(timer);
+  timer = null;
+  document.removeEventListener('visibilitychange', checkIfDue);
+}
+
+/** Called by React for every part of the page that shows scores; the checks only run while at least one exists. */
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  if (++subscribers === 1) startChecking();
+  return () => {
+    listeners.delete(listener);
+    if (--subscribers === 0) stopChecking();
+  };
 }
 
 /** The file if it has already been loaded, otherwise null. */
@@ -136,27 +198,40 @@ export function getLoadedScores(): ScoresFile | null {
 
 /** Kick-off of the latest match included in the scores, or null when the file doesn't say. */
 export function getMatchesThrough(): Date | null {
-  const raw = loaded?.matchesThrough;
+  return matchesThroughOf(loaded);
+}
+
+/** Same as getMatchesThrough, for a file you already hold. */
+export function matchesThroughOf(file: ScoresFile | null): Date | null {
+  const raw = file?.matchesThrough;
   if (!raw) return null;
   const d = new Date(raw);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Re-check every 5 minutes (instead of 10) while `active` is true. */
+export function useFastScoresChecks(active: boolean): void {
+  useEffect(() => {
+    if (!active) return;
+    fastRequests++;
+    return () => { fastRequests--; };
+  }, [active]);
+}
+
 export function useScores(): { scores: ScoresFile | null; loading: boolean } {
-  const [scores, setScores] = useState<ScoresFile | null>(loaded);
-  const [loading, setLoading] = useState(!loaded);
+  // Re-renders whenever a new file replaces the loaded one.
+  const scores = useSyncExternalStore(subscribe, getLoadedScores);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (loaded) return;
-    let cancelled = false;
-    loadScores()
-      .then(file => { if (!cancelled) setScores(file); })
-      .catch(e => console.warn('[scores] could not load scores.json:', e))
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    loadScores().catch(e => {
+      console.warn('[scores] could not load scores.json:', e);
+      setFailed(true);
+    });
   }, []);
 
-  return { scores, loading };
+  return { scores, loading: !scores && !failed };
 }
 
 export function scoreList(scores: ScoresFile | null, category: ScoreCategory, list: ScoreList): ScoreEntry[] {

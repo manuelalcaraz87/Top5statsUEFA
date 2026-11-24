@@ -3,7 +3,7 @@ import { ClubCrest } from '../ClubCrest';
 import { LeagueBadge } from '../LeagueBadge';
 import { OpponentsMeter, ScoreChip } from './charts';
 import { StreakBadge } from './StreakBadge';
-import { FILE_CATEGORY, formatWeight, getMatchesThrough, listForLeague, useScores } from '../../services/scoresService';
+import { FILE_CATEGORY, formatWeight, listForLeague, matchesThroughOf, useScores } from '../../services/scoresService';
 import type { Ingredient, ScoresFile } from '../../services/scoresService';
 import type { Category, CategoryData, CategoryId, StatValue } from './top5Data';
 
@@ -17,7 +17,8 @@ export function formatStat(value: StatValue): string {
 
 /** Which matches the scores include and when they were last checked, in the visitor's local time. */
 export function LastUpdated({ time }: { time: Date | null }) {
-  const through = getMatchesThrough();
+  const { scores } = useScores(); // re-renders when a newer file arrives
+  const through = matchesThroughOf(scores);
   const checked = time ? time.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : DASH;
   if (!through) {
     return (

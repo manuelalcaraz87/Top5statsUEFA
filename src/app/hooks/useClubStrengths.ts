@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { calculateMatchStrengths, type MatchStrength } from '../services/clubStrength';
-import { loadScores } from '../services/scoresService';
+import { useScores } from '../services/scoresService';
 import type { NormalizedMatch } from '../services/footballDataService';
 
 // Strength numbers (Top5 Scores) for the clubs in the match strip. They come
@@ -14,6 +14,8 @@ export type MatchStrengths = Record<number, MatchStrength>;
 
 export function useClubStrengths(matches: MatchClubs[]): MatchStrengths {
   const [strengths, setStrengths] = useState<MatchStrengths>({});
+  // A newer scores file replaces `scores`, which recalculates the numbers.
+  const { scores } = useScores();
   // Only re-run when the matches or clubs actually change.
   const key = JSON.stringify(matches.map(m => [m.id, m.leagueId, m.homeTeam, m.awayTeam]));
 
@@ -21,12 +23,9 @@ export function useClubStrengths(matches: MatchClubs[]): MatchStrengths {
     const list: MatchClubs[] = (JSON.parse(key) as [number, string, string, string][])
       .map(([id, leagueId, homeTeam, awayTeam]) => ({ id, leagueId, homeTeam, awayTeam }));
     if (list.length === 0) return;
-    let cancelled = false;
-    loadScores()
-      .then(() => { if (!cancelled) setStrengths(calculateMatchStrengths(list)); })
-      .catch(e => console.warn('[useClubStrengths] scores.json could not be loaded:', e));
-    return () => { cancelled = true; };
-  }, [key]);
+    if (!scores) return;
+    setStrengths(calculateMatchStrengths(list));
+  }, [key, scores]);
 
   return strengths;
 }
