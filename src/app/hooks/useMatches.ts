@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchCurrentMatchdays, fetchHomeMatches, LEAGUE_CODES, type NormalizedMatch } from '../services/footballDataService';
-import { fetchLiveMatches, pairLiveEntries, type LiveEntry } from '../services/liveMatchService';
+import { fetchLiveMatches, pairLiveEntries, findFixtureId, fetchMatchDetails, type LiveEntry, type MatchDetails } from '../services/liveMatchService';
 
 // Matches for the strip. The home page asks for every competition ("all") in
 // one request and never asks for standings; a league or Champions League page
@@ -43,6 +43,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 let liveCache: { entries: LiveEntry[] | null; timestamp: number } | null = null; // null entries = no live data
 let liveInflight: Promise<void> | null = null;
 const warnedUnpaired = new Set<string>();
+const liveFixtureIds = new Map<number, number>(); // card id -> API-Football fixture id
 
 /** Fetches /api/live unless the shared copy is under 40 seconds old. Never throws. */
 async function refreshLive(): Promise<void> {
@@ -70,6 +71,7 @@ function withLive(key: string, cards: NormalizedMatch[]): NormalizedMatch[] {
   for (const { live, card } of pairLiveEntries(cards, ours)) {
     if (card) {
       overlay.set(card.id, live);
+      if (typeof live.id === 'number') liveFixtureIds.set(card.id, live.id);
     } else {
       const label = `${live.competition} ${live.kickoff} ${live.home} v ${live.away}`;
       if (!warnedUnpaired.has(label)) {
@@ -301,4 +303,53 @@ export function useMatches(leagueId?: string) {
   }, {});
 
   return { matchesByLeague, allMatches, hasLive, loading, waking, error, lastUpdated, refresh };
+}
+
+// ── Details for the match panel (timeline and team stats) ─────────────────────
+
+const DETAILS_POLL = 60_000;
+
+/**
+ * Timeline and team stats for an open panel. Returns null when there is nothing
+ * to show (upcoming match, no details, or any failure). Refreshes every 60 s
+ * while the match is live; stops when the panel closes or the match finishes.
+ */
+export function useMatchDetails(match: NormalizedMatch): MatchDetails | null {
+  const [details, setDetails] = useState<MatchDetails | null>(null);
+  const cardRef = useRef(match);
+  cardRef.current = match;
+  const idRef = useRef<number | null>(null);
+  const status = match.status;
+  const cardId = match.id;
+
+  useEffect(() => {
+    if (status === 'upcoming') { setDetails(null); return; }
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    async function loadOnce() {
+      if (idRef.current === null) idRef.current = liveFixtureIds.get(cardId) ?? await findFixtureId(cardRef.current);
+      if (stopped || idRef.current === null) return;
+      let answer = await fetchMatchDetails(idRef.current);
+      if (answer.kind === 'not-found') {
+        idRef.current = await findFixtureId(cardRef.current);
+        if (stopped || idRef.current === null) return;
+        answer = await fetchMatchDetails(idRef.current);
+      }
+      if (stopped) return;
+      if (answer.kind === 'ok') setDetails(answer.details);
+      // On a failed refresh the last good details stay on screen.
+    }
+
+    async function run() {
+      await loadOnce();
+      if (!stopped && status === 'live') timer = setTimeout(run, DETAILS_POLL);
+    }
+
+    idRef.current = null;
+    run();
+    return () => { stopped = true; if (timer) clearTimeout(timer); };
+  }, [cardId, status]);
+
+  return details;
 }

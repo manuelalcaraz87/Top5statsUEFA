@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { handleLive } from './live.js';
+import { handleFixturesOn, handleMatch } from './match.js';
 
 dotenv.config();
 
@@ -203,6 +204,10 @@ app.get('/api/fd/*', async (req, res) => {
 
 // Live matches from API-Football (see server/live.js)
 app.get('/api/live', handleLive);
+
+// Match details from API-Football (see server/match.js)
+app.get('/api/fixtures-on', handleFixturesOn);
+app.get('/api/match/:id', handleMatch);
 
 // Health check
 app.get('/health', (req, res) => {

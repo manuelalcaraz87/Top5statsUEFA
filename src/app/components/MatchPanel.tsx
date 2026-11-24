@@ -9,6 +9,8 @@ import {
   type ClubLeadersOnCard, type PanelPlayer, type PlayerCategory, type RankedPlayer,
 } from '../services/matchPanelData';
 import type { NormalizedMatch } from '../services/footballDataService';
+import type { EventKind, MatchEvent, MatchDetails, StatKey } from '../services/liveMatchService';
+import { useMatchDetails } from '../hooks/useMatches';
 
 // The panel that opens from a match card: both clubs' strength, four key
 // matchups and the ranked players of the two clubs. Everything comes from the
@@ -133,6 +135,91 @@ function RankedGroup({ club, players }: { club: string; players: RankedPlayer[] 
   );
 }
 
+const EVENT_LABEL: Record<EventKind, string> = {
+  goal: 'Goal',
+  penalty_goal: 'Penalty goal',
+  own_goal: 'Own goal',
+  missed_penalty: 'Penalty missed',
+  red_card: 'Red card',
+};
+
+function eventText(e: MatchEvent): string {
+  const time = `${e.minute}${e.extraMinute ? `+${e.extraMinute}` : ''}'`;
+  return `${time} ${EVENT_LABEL[e.kind]}${e.player ? ` · ${e.player}` : ''}`;
+}
+
+function Timeline({ events, live }: { events: MatchEvent[]; live: boolean }) {
+  if (events.length === 0 && !live) return null;
+  const sorted = [...events].sort((a, b) =>
+    (a.minute ?? 0) - (b.minute ?? 0) || (a.extraMinute ?? 0) - (b.extraMinute ?? 0));
+  return (
+    <section aria-label="Timeline">
+      <h3 className="text-display mb-2 text-sm text-white">Timeline</h3>
+      {sorted.length === 0 ? (
+        <p className="text-sm text-gray-300">No goals or red cards yet</p>
+      ) : (
+        <ul className="space-y-1.5 rounded-xl border border-[#2a2c33] bg-[#16181d] p-3">
+          {sorted.map((e, i) => (
+            <li key={i} className="grid grid-cols-2 gap-3 text-sm text-gray-200">
+              {e.side === 'home'
+                ? <><span className="min-w-0 break-words text-left">{eventText(e)}</span><span /></>
+                : <><span /><span className="min-w-0 break-words text-right">{eventText(e)}</span></>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+const STAT_ROWS: { key: StatKey; label: string; percent?: boolean }[] = [
+  { key: 'possession', label: 'Possession', percent: true },
+  { key: 'shots', label: 'Shots' },
+  { key: 'shotsOnTarget', label: 'Shots on target' },
+  { key: 'corners', label: 'Corners' },
+  { key: 'fouls', label: 'Fouls' },
+  { key: 'saves', label: 'Saves' },
+];
+
+function MatchStats({ stats }: { stats: MatchDetails['stats'] }) {
+  const rows = STAT_ROWS.flatMap(r => {
+    const home = stats.home[r.key];
+    const away = stats.away[r.key];
+    return home === null || away === null ? [] : [{ ...r, home, away }];
+  });
+  if (rows.length === 0) return null;
+  return (
+    <section aria-label="Match stats">
+      <h3 className="text-display mb-2 text-sm text-white">Match stats</h3>
+      <ul className="space-y-3 rounded-xl border border-[#2a2c33] bg-[#16181d] p-3">
+        {rows.map(r => {
+          const total = r.home + r.away;
+          const homeShare = r.percent ? r.home : total > 0 ? (r.home / total) * 100 : 50;
+          const awayShare = r.percent ? r.away : total > 0 ? (r.away / total) * 100 : 50;
+          const suffix = r.percent ? '%' : '';
+          return (
+            <li key={r.key}>
+              <div className="mb-1 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-baseline gap-2 text-xs">
+                <span className="text-sm font-bold tabular-nums text-white">{r.home}{suffix}</span>
+                <span className="text-center text-gray-400">{r.label}</span>
+                <span className="text-right text-sm font-bold tabular-nums text-white">{r.away}{suffix}</span>
+              </div>
+              <div className="flex gap-1" aria-hidden="true">
+                <span className="flex h-1 flex-1 justify-end overflow-hidden rounded-full bg-[#2a2a2a]">
+                  <span className="block h-full rounded-full bg-slate-400" style={{ width: `${homeShare}%` }} />
+                </span>
+                <span className="flex h-1 flex-1 overflow-hidden rounded-full bg-[#2a2a2a]">
+                  <span className="block h-full rounded-full bg-slate-400" style={{ width: `${awayShare}%` }} />
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 function pick(leaders: ClubLeadersOnCard, category: PlayerCategory) {
   return { category, player: leaders[category] };
 }
@@ -142,6 +229,8 @@ export function MatchPanel({ match, homeStrength, awayStrength, onClose }: Match
   const { home, away } = data;
   const rankedAny = data.homeRanked.length > 0 || data.awayRanked.length > 0;
   const summary = `${match.homeTeam} v ${match.awayTeam}`;
+  const details = useMatchDetails(match);
+  const showDetails = match.status !== 'upcoming' && details !== null;
 
   return (
     <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
@@ -172,8 +261,12 @@ export function MatchPanel({ match, homeStrength, awayStrength, onClose }: Match
           </div>
         </div>
 
+        {showDetails && <Timeline events={details.events} live={match.status === 'live'} />}
+        {showDetails && <MatchStats stats={details.stats} />}
+
         <section aria-label="Key matchups">
           <h3 className="text-display mb-2 text-sm text-white">Key matchups</h3>
+          {match.leagueCode === 'CL' && <p className="mb-2 text-xs text-gray-400">Champions League matches only</p>}
           <ul className="space-y-3">
             <MatchupRow viewName={data.viewName} label="Home striker against away defender" left={pick(home, 'striker')} right={pick(away, 'defender')} />
             {/* The home club's player is always on the left, so here the home defender comes first. */}
