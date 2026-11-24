@@ -5,11 +5,12 @@ import { CATEGORIES, type CategoryId } from './top5/top5Data';
 import { formatStat } from './top5/shared';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import {
-  buildMatchPanelData, ordinal,
+  buildMatchPanelData, ordinal, scoresNote,
   type ClubLeadersOnCard, type PanelPlayer, type PlayerCategory, type RankedPlayer,
 } from '../services/matchPanelData';
 import type { NormalizedMatch } from '../services/footballDataService';
 import type { EventKind, MatchEvent, MatchDetails, StatKey } from '../services/liveMatchService';
+import { matchesThroughOf, useFastScoresChecks, useScores } from '../services/scoresService';
 import { useMatchDetails } from '../hooks/useMatches';
 
 // The panel that opens from a match card: both clubs' strength, four key
@@ -225,6 +226,12 @@ function pick(leaders: ClubLeadersOnCard, category: PlayerCategory) {
 }
 
 export function MatchPanel({ match, homeStrength, awayStrength, onClose }: MatchPanelProps) {
+  // Re-renders when a newer scores file arrives, so the note and players stay current.
+  const { scores } = useScores();
+  const through = matchesThroughOf(scores);
+  const note = scoresNote(match, through);
+  // A finished match that the scores don't include yet: look for the new file every 5 minutes.
+  useFastScoresChecks(match.status === 'finished' && note !== null);
   const data = buildMatchPanelData(match);
   const { home, away } = data;
   const rankedAny = data.homeRanked.length > 0 || data.awayRanked.length > 0;
@@ -267,6 +274,7 @@ export function MatchPanel({ match, homeStrength, awayStrength, onClose }: Match
         <section aria-label="Key matchups">
           <h3 className="text-display mb-2 text-sm text-white">Key matchups</h3>
           {match.leagueCode === 'CL' && <p className="mb-2 text-xs text-gray-400">Champions League matches only</p>}
+          {note && <p className="mb-2 text-xs text-gray-400">{note}</p>}
           <ul className="space-y-3">
             <MatchupRow viewName={data.viewName} label="Home striker against away defender" left={pick(home, 'striker')} right={pick(away, 'defender')} />
             {/* The home club's player is always on the left, so here the home defender comes first. */}

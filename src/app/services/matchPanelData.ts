@@ -133,3 +133,18 @@ export function buildMatchPanelData(match: Pick<NormalizedMatch, 'leagueId' | 'h
     awayRanked: rankedPlayers(scores, view, match.awayTeam),
   };
 }
+
+/**
+ * The short note under "Key matchups" about whether the scores include this
+ * match, or null for no note. `through` is the scores file's matchesThrough.
+ */
+export function scoresNote(match: Pick<NormalizedMatch, 'status' | 'utcDate'>, through: Date | null): string | null {
+  if (match.status === 'live') return 'Scores are from before this match.';
+  if (match.status === 'finished' && through) {
+    const kickoff = new Date(match.utcDate);
+    if (!Number.isNaN(kickoff.getTime()) && through.getTime() < kickoff.getTime()) {
+      return "Scores don't include this match yet. They update within about two hours of full time.";
+    }
+  }
+  return null;
+}
