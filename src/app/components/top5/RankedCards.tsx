@@ -2,7 +2,7 @@ import { useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { LeagueBadge } from '../LeagueBadge';
 import { OpponentsMeter, ScoreRing, ThinBar, statBarFractions } from './charts';
 import { WherePanel, WhyPanel } from './panels';
-import { OpponentsInfo, formatStat } from './shared';
+import { OpponentsInfo, RankMarker, formatStat } from './shared';
 import { StreakBadge } from './StreakBadge';
 import { ClubExtras } from './ClubExtras';
 import type { Category, Top5Entry } from './top5Data';
@@ -42,16 +42,19 @@ export function RankedCards({ category, entries, lastFiveLabel = 'Last five leag
               style={{ borderColor: isChosen ? colour : '#2a2c33' }}
             >
               <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-4 xl:grid-cols-[auto_minmax(0,1.2fr)_auto_minmax(0,3.4fr)_auto] xl:gap-x-5">
-                <span
-                  className="text-display flex h-9 w-9 items-center justify-center rounded-lg text-lg"
-                  style={
-                    index === 0
-                      ? { backgroundColor: colour, color: '#111111', outline: '1px solid #f4c95d' }
-                      : { backgroundColor: '#2a2c33', color: '#e5e7eb' }
-                  }
-                >
-                  <span className="sr-only">Number </span>
-                  {index + 1}
+                <span className="relative">
+                  <span
+                    className="text-display flex h-9 w-9 items-center justify-center rounded-lg text-lg"
+                    style={
+                      index === 0
+                        ? { backgroundColor: colour, color: '#111111', outline: '1px solid #f4c95d' }
+                        : { backgroundColor: '#2a2c33', color: '#e5e7eb' }
+                    }
+                  >
+                    <span className="sr-only">Number </span>
+                    {index + 1}
+                  </span>
+                  <RankMarker entry={entry} category={category} rank={index + 1} />
                 </span>
 
                 <div className="min-w-0">

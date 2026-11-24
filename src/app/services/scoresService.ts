@@ -23,6 +23,27 @@ export function formatWeight(weight: number): string {
   return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}%`;
 }
 
+/**
+ * What a club's, or a player's, latest match changed. Every field is optional
+ * and the whole thing may be null or missing: older copies of the file have none.
+ */
+export interface ScoreChange {
+  /** UTC ISO kick-off of the match this change belongs to. */
+  matchKickoff?: string;
+  opponent?: string;
+  /** True when the entry's own club was at home in that match. */
+  home?: boolean;
+  goalsFor?: number;
+  goalsAgainst?: number;
+  /** Rank in the same list before that match; null when not ranked then. */
+  rankBefore?: number | null;
+  scoreBefore?: number | null;
+  /** Players only: false when he did not play. */
+  played?: boolean;
+  /** Players only: his numbers in that match (also holds minutesPlayed); null when he did not play. */
+  matchStats?: Record<string, number | null> | null;
+}
+
 export interface ScoreEntry {
   rank: number;
   name: string;
@@ -40,6 +61,8 @@ export interface ScoreEntry {
   /** Clubs only: last results, oldest first, most recent last. Missing in older copies of the file. */
   form?: ('W' | 'D' | 'L')[];
   badges?: { key: string; count: number; label: string; detail: string }[];
+  /** What the latest match changed. Missing or null when the file has none. */
+  change?: ScoreChange | null;
 }
 
 /** One club's best player in a category, as listed in the file's optional clubLeaders. */
@@ -50,6 +73,10 @@ export interface ClubLeader {
   rank: number;
   opponentsFaced: 'Easy' | 'Average' | 'Hard' | string;
   stats: Record<string, string | number | null>;
+  /** What the latest match changed for this player. Missing or null when the file has none. */
+  change?: ScoreChange | null;
+  /** The club's best player in this category before that match; null when it is the same player. */
+  previousLeader?: string | null;
 }
 
 /** A club's best striker, creator, defender and goalkeeper; null where the file has none. */
@@ -365,4 +392,62 @@ export function findByClubName<T>(byClub: Record<string, T> | undefined, name: s
     if (sameClubName(key, name)) return value;
   }
   return undefined;
+}
+
+// ── What a club's latest match changed (ranks) ──────────────────────────────
+
+/** Which list of the file a top-5 entry came from, read from the entry's key (null when it can't be told). */
+export function listFromEntryKey(key: string): ScoreList | null {
+  const leagueIds = ['epl', 'la-liga', 'serie-a', 'bundesliga', 'ligue-1', 'ucl'];
+  const lists: ScoreList[] = ['overall', 'england', 'spain', 'italy', 'germany', 'france', 'champions-league'];
+  for (const list of lists) if (key.startsWith(`${list}-`)) return list;
+  for (const id of leagueIds) if (key.startsWith(`${id}-`)) return listForLeague(id);
+  return null;
+}
+
+/** The file's own entry for a row shown on the site, found by name (and club, for players). */
+export function findFileEntry(
+  scores: ScoresFile | null, category: ScoreCategory, list: ScoreList, name: string, club: string,
+): ScoreEntry | undefined {
+  const entries = scoreList(scores, category, list);
+  if (category === 'club') return entries.find(e => sameClubName(e.name, name));
+  return entries.find(e => e.name === name && sameClubName(e.club, club));
+}
+
+/** What the rank marker needs: how far a row moved and the sentence that explains it. */
+export interface RankMove {
+  /** Places moved up (positive) or down (negative); null when it was not ranked before. */
+  places: number | null;
+  /** E.g. "Was 8th before Arsenal v Newcastle on 24 Nov". */
+  sentence: string;
+}
+
+function ordinalOf(n: number): string {
+  const lastTwo = n % 100;
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+  const suffix = ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th';
+  return `${n}${suffix}`;
+}
+
+/** The marker for a rank, or null when nothing should be shown (no change info, or the rank did not move). */
+export function rankMove(entry: ScoreEntry | undefined, club: string): RankMove | null {
+  const change = entry?.change;
+  if (!entry || !change) return null;
+  const before = change.rankBefore;
+  if (before === undefined) return null;
+  if (before === entry.rank) return null;
+
+  let match = 'the latest match';
+  if (change.opponent) {
+    const home = change.home === false ? change.opponent : club;
+    const away = change.home === false ? club : change.opponent;
+    match = `${home} v ${away}`;
+    const kickoff = change.matchKickoff ? new Date(change.matchKickoff) : null;
+    if (kickoff && !Number.isNaN(kickoff.getTime())) {
+      match += ` on ${kickoff.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+    }
+  }
+  return before === null
+    ? { places: null, sentence: `Not ranked before ${match}` }
+    : { places: before - entry.rank, sentence: `Was ${ordinalOf(before)} before ${match}` };
 }

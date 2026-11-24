@@ -5,7 +5,7 @@ import { CATEGORIES, type CategoryId } from './top5/top5Data';
 import { formatStat } from './top5/shared';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import {
-  buildMatchPanelData, ordinal, scoresNote,
+  ALL_STAT_KEYS, buildMatchPanelData, ordinal, scoresNote,
   type ClubLeadersOnCard, type PanelPlayer, type PlayerCategory, type RankedPlayer,
 } from '../services/matchPanelData';
 import type { NormalizedMatch } from '../services/footballDataService';
@@ -58,6 +58,40 @@ function hasScore(match: NormalizedMatch): boolean {
   return match.homeScore !== null && match.awayScore !== null;
 }
 
+/** The lines about what this match changed for a player (empty when there is nothing to say). */
+function changeLines(category: PlayerCategory, player: PanelPlayer, noun: string, statLabels: string[]): string[] {
+  const change = player.change;
+  if (!change) return [];
+  const lines: string[] = [];
+
+  if (change.played === false) {
+    lines.push('Did not play in this match');
+  } else if (change.played === true && change.matchStats) {
+    // Label then number, in the category tabs' own order; zero and minutes played are left out.
+    const parts = ALL_STAT_KEYS[category].flatMap((key, i) => {
+      const value = change.matchStats?.[key];
+      return key === 'minutesPlayed' || typeof value !== 'number' || value === 0 ? [] : [`${statLabels[i]} ${value}`];
+    });
+    if (parts.length > 0) lines.push(`This match: ${parts.join(' · ')}`);
+  }
+
+  if (change.rankBefore === null) lines.push('New in the ranking');
+  else if (typeof change.rankBefore === 'number') {
+    lines.push(change.rankBefore === player.rank
+      ? `Rank unchanged, ${ordinal(player.rank)}`
+      : `Rank ${ordinal(change.rankBefore)} → ${ordinal(player.rank)}`);
+  }
+
+  if (typeof change.scoreBefore === 'number' && change.scoreBefore.toFixed(1) !== player.score.toFixed(1)) {
+    lines.push(`Top5 Score ${change.scoreBefore.toFixed(1)} → ${player.score.toFixed(1)}`);
+  }
+
+  if (change.previousLeader) {
+    lines.push(`Now ${player.club}'s best ${noun}, ahead of ${change.previousLeader}`);
+  }
+  return lines;
+}
+
 function PlayerSide({ category, player, align, viewName }: { category: PlayerCategory; player: PanelPlayer | null; align: 'left' | 'right'; viewName: string | null }) {
   const tab = CATEGORIES[TAB_ID[category]];
   const right = align === 'right';
@@ -76,6 +110,9 @@ function PlayerSide({ category, player, align, viewName }: { category: PlayerCat
             <span className="text-[11px] leading-tight text-gray-400">Top5 Score</span>
           </div>
           <p className="text-xs text-gray-200">{ordinal(player.rank)}{viewName ? ` in ${viewName}` : ''}</p>
+          {changeLines(category, player, tab.noun, tab.statLabels).map(line => (
+            <p key={line} className="text-xs text-gray-300">{line}</p>
+          ))}
           <dl className="mt-1 grid w-full grid-cols-3 gap-2">
             {tab.statLabels.slice(0, 3).map((label, i) => (
               <div key={label} className="min-w-0">
