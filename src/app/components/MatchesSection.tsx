@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { MatchCard } from './MatchCard';
+import { MatchPanel } from './MatchPanel';
 import { LeagueBadge } from './LeagueBadge';
 import { NoCurrentData } from './NoCurrentData';
 import { useMatches } from '../hooks/useMatches';
@@ -48,13 +49,14 @@ function prefersReducedMotion(): boolean {
 type Strengths = ReturnType<typeof useClubStrengths>;
 
 /** One competition on the home page: header with arrows, then its cards, paged. */
-function CompetitionGroup({ leagueName, matches, strengths, perPage, status }: {
+function CompetitionGroup({ leagueName, matches, strengths, perPage, status, onOpen }: {
   leagueName: string;
   /** loading: its request has not answered yet; error: it failed with nothing to show. */
   status: 'loading' | 'error' | 'ready';
   matches: NormalizedMatch[];
   strengths: Strengths;
   perPage: number;
+  onOpen: (match: NormalizedMatch) => void;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [first, setFirst] = useState(0); // index of the first card in view
@@ -130,7 +132,7 @@ function CompetitionGroup({ leagueName, matches, strengths, perPage, status }: {
         >
           {matches.map(match => (
             <div key={match.id} className="w-full flex-shrink-0 snap-start sm:w-[calc((100%-1rem)/3)]">
-              <MatchCard match={match} homeStrength={strengths[match.id]?.home} awayStrength={strengths[match.id]?.away} />
+              <MatchCard match={match} homeStrength={strengths[match.id]?.home} awayStrength={strengths[match.id]?.away} onOpen={onOpen} />
             </div>
           ))}
         </div>
@@ -224,6 +226,11 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
   const groups = [...LEAGUE_ORDER, ...leagues.filter(l => !LEAGUE_ORDER.includes(l))];
 
   const strengths = useClubStrengths(matches);
+
+  // The match whose panel is open. The panel shows the card's current data
+  // (live minute, score) and keeps the last copy if the card drops out of the list.
+  const [openMatch, setOpenMatch] = useState<NormalizedMatch | null>(null);
+  const panelMatch = openMatch ? (allMatches.find(m => m.id === openMatch.id) ?? openMatch) : null;
   const hasLive = matches.some(m => m.status === 'live');
 
   const jumpTo = (leagueName: string) => {
@@ -338,6 +345,7 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
                 strengths={strengths}
                 perPage={perPage}
                 status={groupStatus}
+                onOpen={setOpenMatch}
               />
             ))}
           </div>
@@ -367,12 +375,22 @@ export function MatchesSection({ onlyLeagueId }: MatchesSectionProps) {
                   match={match}
                   homeStrength={strengths[match.id]?.home}
                   awayStrength={strengths[match.id]?.away}
+                  onOpen={setOpenMatch}
                 />
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {panelMatch && (
+        <MatchPanel
+          match={panelMatch}
+          homeStrength={strengths[panelMatch.id]?.home}
+          awayStrength={strengths[panelMatch.id]?.away}
+          onClose={() => setOpenMatch(null)}
+        />
+      )}
     </section>
   );
 }

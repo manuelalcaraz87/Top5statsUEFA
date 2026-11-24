@@ -42,12 +42,32 @@ export interface ScoreEntry {
   badges?: { key: string; count: number; label: string; detail: string }[];
 }
 
+/** One club's best player in a category, as listed in the file's optional clubLeaders. */
+export interface ClubLeader {
+  name: string;
+  score: number;
+  /** Rank in the view's published list (e.g. 12 = 12th in La Liga). */
+  rank: number;
+  opponentsFaced: 'Easy' | 'Average' | 'Hard' | string;
+  stats: Record<string, string | number | null>;
+}
+
+/** A club's best striker, creator, defender and goalkeeper; null where the file has none. */
+export interface ClubLeaders {
+  striker: ClubLeader | null;
+  creator: ClubLeader | null;
+  defender: ClubLeader | null;
+  goalkeeper: ClubLeader | null;
+}
+
 export interface ScoresFile {
   generatedAt: string;
   /** UTC ISO time of the kick-off of the latest match included. Missing in older copies of the file. */
   matchesThrough?: string;
   season: string;
   categories: Record<ScoreCategory, Partial<Record<ScoreList, ScoreEntry[]>>>;
+  /** Each club's best players, per view, then by club name. Missing in older copies of the file. */
+  clubLeaders?: Partial<Record<ScoreList, Record<string, ClubLeaders>>>;
 }
 
 // ── Site ids -> the file's keys (the one place this mapping lives) ───────────
@@ -253,6 +273,21 @@ export function findClubScore(index: Map<string, ScoreEntry>, name: string): Sco
   for (const key of clubKeys(name)) {
     const hit = index.get(key);
     if (hit) return hit;
+  }
+  return undefined;
+}
+
+/** True when two club names (from any source) are the same club, using the same matching as club scores. */
+export function sameClubName(a: string, b: string): boolean {
+  const keys = clubKeys(a);
+  return clubKeys(b).some(k => keys.includes(k));
+}
+
+/** The value stored under a club's name in a record keyed by club name, found by any spelling, or undefined. */
+export function findByClubName<T>(byClub: Record<string, T> | undefined, name: string): T | undefined {
+  if (!byClub) return undefined;
+  for (const [key, value] of Object.entries(byClub)) {
+    if (sameClubName(key, name)) return value;
   }
   return undefined;
 }
