@@ -114,7 +114,7 @@ export function OpponentsInfo() {
 }
 
 const PLAYER_INTRO =
-  'We score every player on what he does per 90 minutes, counting actions against tougher opponents and in tougher leagues for more.';
+  'We score every player on what he does per 90 minutes, counting actions against tougher opponents and in tougher leagues for more. A player with few minutes is pulled toward average until he has played more.';
 const PLAYER_SENTENCES = [
   `${PLAYER_INTRO} 50 is an average player in that role and 98 is the best in Europe right now.`,
   "Players need at least half of their team's minutes to be ranked.",
